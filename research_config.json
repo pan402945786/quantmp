@@ -1,0 +1,8 @@
+{
+  "initial_capital": 100000,
+  "lookback_days": 5,
+  "max_weight": 0.6,
+  "transaction_cost_bps": 10,
+  "strategy_version": "momentum-v1",
+  "database": "research.sqlite3"
+}

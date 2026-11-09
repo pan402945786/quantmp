@@ -1,0 +1,17 @@
+{
+  "base": "BTC",
+  "quote": "USDT",
+  "quantity": "0.01",
+  "interval_seconds": 10,
+  "timeout_seconds": 5,
+  "max_age_seconds": 3,
+  "max_skew_seconds": 2,
+  "rebalance_cost_quote": "0.10",
+  "min_net_profit_quote": "0.10",
+  "database": "arbitrage.sqlite3",
+  "exchanges": [
+    {"id": "binance", "symbol": "BTCUSDT", "taker_fee": "0.001"},
+    {"id": "kraken", "symbol": "XBTUSDT", "taker_fee": "0.004"},
+    {"id": "coinbase", "symbol": "BTC-USDT", "taker_fee": "0.006"}
+  ]
+}
