@@ -135,6 +135,21 @@ def momentum_targets(on: str, panel: PricePanel, config: dict) -> dict[str, floa
     return _cap_weights(scores, float(config["max_weight"]))
 
 
+def relative_reversion_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
+    """Allocate toward assets with negative cross-sectional lookback returns."""
+    lookback = int(config["lookback_days"])
+    index = panel.dates.index(on)
+    if index < lookback:
+        return {}
+    prior = panel.dates[index - lookback]
+    scores = {}
+    for asset in panel.assets:
+        change = panel.price(on, asset) / panel.price(prior, asset) - 1.0
+        if change < 0:
+            scores[asset] = -change
+    return _cap_weights(scores, float(config["max_weight"]))
+
+
 def equal_weight_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
     weight = 1.0 / len(panel.assets)
     return _cap_weights({asset: 1.0 for asset in panel.assets}, float(config["max_weight"])) if weight else {}
@@ -146,6 +161,7 @@ def cash_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
 
 STRATEGIES: dict[str, TargetFunction] = {
     "momentum": momentum_targets,
+    "relative_reversion": relative_reversion_targets,
     "equal_weight": equal_weight_targets,
     "cash": cash_targets,
 }

@@ -31,7 +31,7 @@ python arbitrage.py
 
 ## 研究闭环（阶段 1）
 
-按照 [研究系统阶段 1 实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的研究入口。它使用 `data/demo_prices.csv` 的矩形价格数据，比较简单动量、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。
+按照 [研究系统阶段 1 实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的研究入口。它使用 `data/demo_prices.csv` 的矩形价格数据，比较简单动量、相对偏离回归、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。
 
 ```powershell
 python research.py

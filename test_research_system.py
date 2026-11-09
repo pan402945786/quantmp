@@ -29,12 +29,20 @@ class ResearchSystemTests(unittest.TestCase):
         self.assertLess(result.metrics["ending_equity"], 100000 * (111 / 100))
         self.assertGreaterEqual(result.metrics["max_drawdown"], -1.0)
 
+    def test_relative_reversion_is_price_only_and_traceable(self):
+        panel = load_price_csv(self.data)
+        result = backtest(panel, self.config, "relative_reversion")
+        self.assertEqual(result.predictions[0]["decision_date"], "2025-01-06")
+        self.assertIn("BBB", result.predictions[0]["targets"])
+        self.assertGreater(len(result.trades), 0)
+        self.assertLessEqual(max(result.predictions[0]["targets"].values()), 0.6)
+
     def test_database_contains_traceable_outputs(self):
         with tempfile.TemporaryDirectory() as directory:
             database = Path(directory) / "research.sqlite3"
-            experiment, results = run_experiment(self.data, self.config, ["momentum", "cash"], database)
+            experiment, results = run_experiment(self.data, self.config, ["momentum", "relative_reversion", "cash"], database)
             self.assertEqual(len(experiment), 16)
-            self.assertEqual(len(results), 2)
+            self.assertEqual(len(results), 3)
             db = sqlite3.connect(database)
             try:
                 self.assertEqual(db.execute("SELECT COUNT(*) FROM experiments").fetchone()[0], 1)
