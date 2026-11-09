@@ -3,6 +3,7 @@
   "lookback_days": 5,
   "max_weight": 0.6,
   "transaction_cost_bps": 10,
-  "strategy_version": "momentum-v1",
-  "database": "research.sqlite3"
+  "strategy_version": "research-phase1-btc-sol-v1",
+  "database": "research.sqlite3",
+  "data": "data/btc_sol_daily.csv"
 }

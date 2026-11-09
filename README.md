@@ -40,3 +40,14 @@ python -m unittest -v
 ```
 
 研究结果写入 `research.sqlite3`，其中保存实验配置和数据哈希、每次预测、交易、每日组合权益及指标。该数据库文件默认被忽略，不会提交到 Git。设计依据和当前边界见 [研究系统设计](docs/research-system-design.md) 与 [阶段 1 实现记录](docs/research-system-implementation.md)。
+
+## 接入 BTC 和 SOL 历史数据
+
+使用 Binance 公共现货 K 线接口下载 UTC 日线收盘价。默认从 2021-01-01 下载 `BTCUSDT` 和 `SOLUSDT`，写入 `data/btc_sol_daily.csv`，同时生成同名 `.manifest.json` 记录数据来源、请求区间、行数和 SHA-256。
+
+```powershell
+python download_history.py
+python research.py --data data/btc_sol_daily.csv --json
+```
+
+`research_config.json` 已将研究数据默认切换为 `data/btc_sol_daily.csv`。本仓库包含当前下载的数据文件和 manifest，便于克隆后直接运行；需要刷新数据时重新运行下载脚本，并检查 manifest 中的数据哈希。

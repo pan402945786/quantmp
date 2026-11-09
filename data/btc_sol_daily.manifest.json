@@ -1,0 +1,20 @@
+{
+  "path": "data\\btc_sol_daily.csv",
+  "sha256": "62a390e6a8be29e7228d9fc3d6303a78fba5e67bb9fe54977822c520f44fe209",
+  "rows": 4276,
+  "assets": [
+    "BTCUSDT",
+    "SOLUSDT"
+  ],
+  "start": "2021-01-01",
+  "end": "2026-11-08",
+  "source": "https://data-api.binance.vision/api/v3/klines",
+  "interval": "1d",
+  "symbols": [
+    "BTCUSDT",
+    "SOLUSDT"
+  ],
+  "requested_start": "2021-01-01",
+  "requested_end": "2026-11-11",
+  "downloaded_at": "2026-11-09T23:53:34.778792+00:00"
+}
