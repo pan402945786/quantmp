@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 
-VERSION = "research-system-0.1.0"
+VERSION = "research-system-0.2.0"
 
 
 @dataclass(frozen=True)
@@ -181,9 +181,46 @@ def _validate_config(config: dict) -> dict:
         raise ValueError("lookback_days must be at least 1")
     if not 0 < result["max_weight"] <= 1:
         raise ValueError("max_weight must be in (0, 1]")
-    if not math.isfinite(result["transaction_cost_bps"]) or result["transaction_cost_bps"] < 0:
-        raise ValueError("transaction_cost_bps must be non-negative")
+    if not math.isfinite(result["transaction_cost_bps"]) or not 0 <= result["transaction_cost_bps"] < 10000:
+        raise ValueError("transaction_cost_bps must be in [0, 10000) for unlevered spot execution")
     return result
+
+
+def _rebalance(current_values: dict[str, float], cash: float, targets: dict[str, float],
+               cost_rate: float) -> tuple[dict[str, float], dict[str, float], float, float]:
+    """Solve post-cost targets without borrowing, charging costs on net trades.
+
+    E_after + rate * sum(abs(weight * E_after - current_value)) = E_before.
+    For a cost rate below 1 and gross weights at most 1, the left side is
+    strictly increasing and piecewise linear. Starting at pre-cost equity,
+    solve each segment until trade directions stop changing. Normalized,
+    positive terms avoid cancellation near a 100% fee and large cash values.
+    """
+    value_before = cash + math.fsum(current_values.values())
+    weights = {asset: targets.get(asset, 0.0) for asset in current_values}
+    cash_weight = max(0.0, 1.0 - math.fsum(weights.values()))
+    equity = value_before
+    buys = {asset for asset, value in current_values.items() if weights[asset] * equity >= value}
+    for _ in range(len(current_values) + 2):
+        factors = {asset: 1.0 + cost_rate if asset in buys else 1.0 - cost_rate
+                   for asset in current_values}
+        numerator = math.fsum([cash / value_before, *(
+            factors[asset] * (value / value_before) for asset, value in current_values.items())])
+        denominator = math.fsum([cash_weight, *(
+            factors[asset] * weight for asset, weight in weights.items())])
+        equity = value_before * (numerator / denominator)
+        next_buys = {asset for asset, value in current_values.items() if weights[asset] * equity >= value}
+        if next_buys == buys:
+            break
+        buys = next_buys
+    else:
+        raise ArithmeticError("post-cost trade directions did not converge")
+    target_values = {asset: weight * equity for asset, weight in weights.items()}
+    trade_values = {asset: target_values[asset] - value for asset, value in current_values.items()}
+    fee = cost_rate * math.fsum(abs(value) for value in trade_values.values())
+    if not math.isclose(equity + fee, value_before, rel_tol=1e-12):
+        raise ArithmeticError("post-cost rebalance does not conserve funds")
+    return target_values, trade_values, equity * cash_weight, fee
 
 
 def _metrics(portfolio: list[dict], initial_capital: float, turnover: float) -> dict[str, float]:
@@ -215,51 +252,54 @@ def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
     lookback = cfg["lookback_days"]
     if len(panel.dates) <= lookback + 1:
         raise ValueError("price history is too short for the configured lookback")
+    if any((date.fromisoformat(current) - date.fromisoformat(previous)).days != 1
+           for previous, current in zip(panel.dates, panel.dates[1:])):
+        raise ValueError("backtest requires consecutive daily prices; missing dates cannot be filled")
     target_fn = STRATEGIES[strategy]
     cash = cfg["initial_capital"]
     units = {asset: 0.0 for asset in panel.assets}
-    previous_weights = {asset: 0.0 for asset in panel.assets}
     predictions: list[dict] = []
     trades: list[dict] = []
-    portfolio: list[dict] = []
+    portfolio: list[dict] = [{
+        "date": panel.dates[lookback], "equity": cash, "cash": cash,
+        "weights": {asset: 0.0 for asset in panel.assets}, "traded": False,
+    }]
     turnover = 0.0
     for index in range(lookback, len(panel.dates) - 1):
         decision_date = panel.dates[index]
         execution_date = panel.dates[index + 1]
         execution_prices = {asset: panel.price(execution_date, asset) for asset in panel.assets}
-        value_before = cash + sum(units[asset] * execution_prices[asset] for asset in panel.assets)
+        value_before = cash + math.fsum(units[asset] * execution_prices[asset] for asset in panel.assets)
         targets = target_fn(decision_date, panel, cfg)
-        targets = {asset: max(0.0, min(float(weight), cfg["max_weight"])) for asset, weight in targets.items()}
-        target_total = sum(targets.values())
-        if target_total > 1.0 + 1e-9:
+        if any(asset not in units for asset in targets):
+            raise ValueError(f"{strategy} produced an unknown asset")
+        targets = {asset: float(weight) for asset, weight in targets.items()}
+        if any(not math.isfinite(weight) or weight < 0 for weight in targets.values()):
+            raise ValueError(f"{strategy} produced a non-finite or negative target")
+        targets = {asset: min(weight, cfg["max_weight"]) for asset, weight in targets.items()}
+        target_total = math.fsum(targets.values())
+        if target_total > 1.0 + 1e-12:
             raise ValueError(f"{strategy} produced more than 100% gross exposure")
+        if target_total > 1.0:
+            targets = {asset: weight / target_total for asset, weight in targets.items()}
         current_values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
-        target_values = {asset: value_before * targets.get(asset, 0.0) for asset in panel.assets}
-        trade_values = {asset: target_values[asset] - current_values[asset] for asset in panel.assets}
-        traded_value = sum(abs(value) for value in trade_values.values())
+        target_values, trade_values, cash, _ = _rebalance(
+            current_values, cash, targets, cfg["transaction_cost_bps"] / 10000.0)
+        traded_value = math.fsum(abs(value) for value in trade_values.values())
         turnover += traded_value / value_before if value_before else 0.0
-        fee = traded_value * cfg["transaction_cost_bps"] / 10000.0
-        cash = value_before - sum(target_values.values()) - fee
         units = {asset: target_values[asset] / execution_prices[asset] for asset in panel.assets}
         for asset in panel.assets:
-            if abs(trade_values[asset]) > 1e-9:
+            if trade_values[asset] != 0.0:
                 trades.append({"date": execution_date, "asset": asset, "side": "buy" if trade_values[asset] > 0 else "sell",
                                "price": execution_prices[asset], "notional": abs(trade_values[asset]),
-                               "fee": fee * abs(trade_values[asset]) / traded_value if traded_value else 0.0})
+                               "fee": abs(trade_values[asset]) * cfg["transaction_cost_bps"] / 10000.0})
         predictions.append({"decision_date": decision_date, "execution_date": execution_date,
                             "targets": targets, "signals": {asset: panel.price(decision_date, asset) /
                             panel.price(panel.dates[index - lookback], asset) - 1.0 for asset in panel.assets}})
-        equity = cash + sum(units[asset] * execution_prices[asset] for asset in panel.assets)
+        equity = cash + math.fsum(target_values.values())
         portfolio.append({"date": execution_date, "equity": equity, "cash": cash,
-                          "weights": {asset: target_values[asset] / value_before for asset in panel.assets},
-                          "traded": traded_value > 1e-9})
-        previous_weights = targets
-    final_date = panel.dates[-1]
-    final_equity = cash + sum(units[asset] * panel.price(final_date, asset) for asset in panel.assets)
-    if portfolio and portfolio[-1]["date"] != final_date:
-        portfolio.append({"date": final_date, "equity": final_equity, "cash": cash,
-                          "weights": {asset: units[asset] * panel.price(final_date, asset) / final_equity
-                                      for asset in panel.assets}, "traded": False})
+                          "weights": {asset: target_values[asset] / equity for asset in panel.assets},
+                          "traded": traded_value > 0.0})
     metrics = _metrics(portfolio, cfg["initial_capital"], turnover)
     return BacktestResult(strategy, tuple(predictions), tuple(trades), tuple(portfolio), metrics)
 
@@ -301,30 +341,47 @@ def setup_research_db(path: str | Path) -> sqlite3.Connection:
 
 def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, config: dict,
                     results: Iterable[BacktestResult]) -> None:
-    created_at = datetime.now().astimezone().isoformat()
-    db.execute("INSERT OR REPLACE INTO experiments VALUES (?,?,?,?,?,?,?)", (
-        experiment, created_at, panel.source, panel.content_hash,
-        json.dumps(config, sort_keys=True), VERSION, "completed"))
-    for result in results:
-        db.execute("DELETE FROM predictions WHERE experiment_id=? AND strategy=?", (experiment, result.strategy))
-        db.execute("DELETE FROM trades WHERE experiment_id=? AND strategy=?", (experiment, result.strategy))
-        db.execute("DELETE FROM portfolio_daily WHERE experiment_id=? AND strategy=?", (experiment, result.strategy))
-        db.execute("DELETE FROM metrics WHERE experiment_id=? AND strategy=?", (experiment, result.strategy))
+    """Append atomically; identical reruns are no-ops and conflicts are rejected."""
+    selected = list(results)
+    if not selected or len({result.strategy for result in selected}) != len(selected):
+        raise ValueError("experiment requires non-empty, unique strategy results")
+    records: dict[str, list[tuple]] = {table: [] for table in (
+        "predictions", "trades", "portfolio_daily", "metrics")}
+    for result in selected:
         for prediction in result.predictions:
-            db.execute("INSERT INTO predictions VALUES (?,?,?,?,?,?)", (
+            records["predictions"].append((
                 experiment, result.strategy, prediction["decision_date"], prediction["execution_date"],
                 json.dumps(prediction["targets"], sort_keys=True), json.dumps(prediction["signals"], sort_keys=True)))
         for trade in result.trades:
-            db.execute("INSERT INTO trades VALUES (?,?,?,?,?,?,?,?)", (
+            records["trades"].append((
                 experiment, result.strategy, trade["date"], trade["asset"], trade["side"],
                 trade["price"], trade["notional"], trade["fee"]))
         for row in result.portfolio:
-            db.execute("INSERT INTO portfolio_daily VALUES (?,?,?,?,?,?,?)", (
+            records["portfolio_daily"].append((
                 experiment, result.strategy, row["date"], row["equity"], row["cash"],
                 json.dumps(row["weights"], sort_keys=True), int(row["traded"])))
         for metric, value in result.metrics.items():
-            db.execute("INSERT INTO metrics VALUES (?,?,?,?)", (experiment, result.strategy, metric, value))
-    db.commit()
+            records["metrics"].append((experiment, result.strategy, metric, value))
+    metadata = (panel.source, panel.content_hash, json.dumps(config, sort_keys=True), VERSION, "completed")
+    with db:
+        existing = db.execute(
+            "SELECT data_source, data_hash, config_json, version, status FROM experiments WHERE experiment_id=?",
+            (experiment,)).fetchone()
+        if existing is not None:
+            # Source paths are provenance, not identity; retain the first path
+            # when identical input bytes are moved to a different directory.
+            if existing[1:] != metadata[1:] or any(
+                sorted(db.execute(f"SELECT * FROM {table} WHERE experiment_id=?", (experiment,)).fetchall())
+                != sorted(rows) for table, rows in records.items()
+            ):
+                raise ValueError(f"experiment {experiment} is immutable; conflicting results cannot overwrite history")
+            return
+        created_at = datetime.now().astimezone().isoformat()
+        db.execute("INSERT INTO experiments VALUES (?,?,?,?,?,?,?)", (experiment, created_at, *metadata))
+        for table, rows in records.items():
+            if rows:
+                placeholders = ",".join("?" for _ in rows[0])
+                db.executemany(f"INSERT INTO {table} VALUES ({placeholders})", rows)
 
 
 def run_experiment(data_path: str | Path, config: dict, strategies: Iterable[str], database: str | Path) -> tuple[str, list[BacktestResult]]:
@@ -332,6 +389,8 @@ def run_experiment(data_path: str | Path, config: dict, strategies: Iterable[str
     selected = list(strategies)
     if not selected:
         raise ValueError("at least one strategy is required")
+    if len(set(selected)) != len(selected):
+        raise ValueError("strategies must be unique")
     results = [backtest(panel, config, strategy) for strategy in selected]
     identifier = experiment_id(panel, config, selected)
     db = setup_research_db(database)
