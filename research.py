@@ -6,7 +6,7 @@ import argparse
 import json
 import sys
 
-from research_system import STRATEGIES, run_experiment, run_fixed_mix_experiment
+from research_system import STRATEGIES, run_dynamic_mix_experiment, run_experiment, run_fixed_mix_experiment
 
 
 def main() -> int:
@@ -17,15 +17,16 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--strategy", choices=["all", *STRATEGIES], default="all")
     mode.add_argument("--portfolio", action="store_true", help="fixed-budget portfolio with all strategy shadows")
+    mode.add_argument("--selector", action="store_true", help="mature-feedback selector with fixed and shadow controls")
     parser.add_argument("--budget", action="append", default=[], metavar="STRATEGY=WEIGHT",
-                        help="repeat to set all portfolio strategy budgets; requires --portfolio")
+                        help="repeat to set fixed benchmark budgets; requires --portfolio or --selector")
     parser.add_argument("--start", dest="start_at", help="inclusive first release time, with timezone")
     parser.add_argument("--end", dest="end_at", help="inclusive final release time, with timezone")
     parser.add_argument("--data-delay-seconds", type=float, help="daily-close availability delay, below 86400")
     parser.add_argument("--json", action="store_true", dest="as_json", help="print machine-readable results")
     args = parser.parse_args()
-    if args.budget and not args.portfolio:
-        parser.error("--budget requires --portfolio")
+    if args.budget and not (args.portfolio or args.selector):
+        parser.error("--budget requires --portfolio or --selector")
     try:
         with open(args.config, encoding="utf-8") as handle:
             config = json.load(handle)
@@ -46,18 +47,28 @@ def main() -> int:
         strategies = list(STRATEGIES) if args.strategy == "all" else [args.strategy]
         data_path = args.data or config.get("data", "data/demo_prices.csv")
         database = args.database or config.get("database", "research.sqlite3")
-        if args.portfolio:
+        if args.selector:
+            identifier, results = run_dynamic_mix_experiment(data_path, config, database)
+        elif args.portfolio:
             identifier, results = run_fixed_mix_experiment(data_path, config, database)
         else:
             identifier, results = run_experiment(data_path, config, strategies, database)
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
+    summary = {"experiment_id": identifier,
+               "results": [{"strategy": item.strategy, "role": item.role, **item.metrics,
+                            "pending_orders": sum(event["event"] == "pending" for event in item.order_events)}
+                           for item in results]}
+    if args.selector:
+        dynamic = results[-1]
+        counts = {kind: sum(event["event_type"] == kind for event in dynamic.selector_events)
+                  for kind in ("feedback_created", "feedback_matured", "research_rejected", "version_frozen", "version_activated")}
+        summary["selector"] = {**counts, "pending_feedback": counts["feedback_created"] - counts["feedback_matured"],
+                               "last_version": dynamic.allocations[-1]["selector_version"],
+                               "last_selected_strategy": dynamic.allocations[-1]["selected_strategy"]}
     if args.as_json:
-        print(json.dumps({"experiment_id": identifier,
-                          "results": [{"strategy": item.strategy, "role": item.role, **item.metrics,
-                                       "pending_orders": sum(event["event"] == "pending" for event in item.order_events)}
-                                      for item in results]}, indent=2))
+        print(json.dumps(summary, indent=2))
     else:
         print(f"experiment={identifier}")
         print(f"data={data_path} database={database}")
@@ -71,6 +82,8 @@ def main() -> int:
                   f"fees={item.metrics['total_fees']:.2f} "
                   f"cash_avg={item.metrics['average_cash_weight']:.2%} "
                   f"pending={sum(event['event'] == 'pending' for event in item.order_events)}")
+        if args.selector:
+            print("selector=" + json.dumps(summary["selector"], sort_keys=True))
     return 0
 
 

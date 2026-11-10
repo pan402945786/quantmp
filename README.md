@@ -2,7 +2,7 @@
 
 项目核心目标是检验依据当时信息挑选策略组合、持续积累扣除成本后收益的能力。后续开发以 [历史时钟驱动的策略组合研究与模拟实盘](docs/strategy-selection-replay.md) 为主线：受限历史数据 → 研究与内部验证 → 冻结版本 → 向前模拟 → 成熟结果复盘 → 调整组合或补充策略库。
 
-当前已实现价差监控、BTC/SOL 数据下载、四个策略的独立影子账和固定策略组合。阶段 A、B、C 分别完成资金账务、历史时钟隔离与连续组合；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 D 的选择器、成熟反馈和版本生效管理，研究改进循环仍待实现。总体背景见 [研究系统设计](docs/research-system-design.md)。
+当前已实现价差监控、BTC/SOL 数据下载、独立影子账、固定组合及首版动态状态选择器。阶段 A 到 D 完成资金账务、历史时钟、连续组合、成熟反馈、隔离验证与版本生效；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 E 的研究改进、候选扩充与影子确认。首版选择器历史净收益为负，尚未证明选择能力有效。总体背景见 [研究系统设计](docs/research-system-design.md)。
 
 ## 跨交易所现货价差监控
 
@@ -47,11 +47,11 @@ python -m unittest -v
 
 研究结果写入 `research.sqlite3`，其中保存实验配置和数据哈希、每次预测、交易、每日组合权益及指标。该数据库文件默认被忽略，不会提交到 Git。设计依据和当前边界见 [研究系统设计](docs/research-system-design.md) 与 [阶段 1 实现记录](docs/research-system-implementation.md)。
 
-仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；当前 `0.4.0` 版本会生成新的实验 ID，保留旧版本记录。
+仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；当前 `0.5.0` 版本会生成新的实验 ID，保留旧版本记录。
 
 日期 D 的收盘数据在 D+1 日 UTC 零点加发布延迟后释放；策略只收到此时可见的只读历史，不接触未来价格或全量文件摘要。新目标在下一根日线收盘执行，先处理旧订单，再形成新决策。可用时间延迟 `data_delay_seconds` 默认为 0，首版支持 `[0, 86400)` 秒。
 
-`--start`、`--end` 为带时区的可用时间边界，包含边界上的释放事件；起点落在两次释放之间时，从下一次释放开始，起点前数据仅作预热。也可在配置中设置 `start_at`、`end_at` 和 `data_delay_seconds`。结束时不补读未来数据，`pending_orders` 表示尚待执行的目标数（含现金目标）。决策快照摘要和订单事件分别追加到 `decision_audit`、`order_events` 表。这个入口尚未训练选择器或运行策略扩充循环。
+`--start`、`--end` 为带时区的可用时间边界，包含边界上的释放事件；起点落在两次释放之间时，从下一次释放开始，起点前数据仅作价格预热。也可在配置中设置 `start_at`、`end_at` 和 `data_delay_seconds`。结束时不补读未来数据，`pending_orders` 表示尚待执行的目标数（含现金目标）。决策快照摘要和订单事件分别追加到 `decision_audit`、`order_events` 表。原单策略及固定组合入口不训练选择器，动态模式见下方。
 
 ## 固定策略组合与影子账
 
@@ -67,7 +67,22 @@ python research.py --portfolio --config research_mix_config.json --start 2022-01
 
 输出中的 `role=shadow` 是各自使用相同初始资金、成本及执行规则的独立假设账户，零预算策略也持续记录；`role=portfolio` 才是固定组合的实际模拟资金账。原单策略入口使用 `role=standalone`。结果提供累计 `total_fees` 和逐日权益点现金比例均值 `average_cash_weight`（含初始点）；不同账户的风险暴露仍可能不同。
 
-`account_roles` 保存账户角色，`allocation_decisions` 追加每次预算、各策略目标、资产权重贡献、现金目标、风险检查和可见证据。权重贡献表示目标暴露，不是收益归因。当前 51 项测试及 BTC/SOL 对照结果见 [实现记录](docs/research-system-implementation.md)。
+`account_roles` 保存账户角色，`allocation_decisions` 追加每次预算、各策略目标、资产权重贡献、现金目标、风险检查和可见证据。权重贡献表示目标暴露，不是收益归因。阶段 C 当轮 51 项测试及 BTC/SOL 对照结果见 [实现记录](docs/research-system-implementation.md)。
+
+## 成熟反馈与动态选择器
+
+```powershell
+python research.py --selector --config research_selector_config.json --json
+python research.py --selector --config research_selector_config.json --start 2022-01-01T00:00:00Z --end 2023-01-01T00:00:00Z --database research_selector_2022.sqlite3
+```
+
+`--selector` 与 `--portfolio`、`--strategy` 互斥，默认示例数据库为 `research_selector.sqlite3`。一次运行同时生成四个 `shadow`、一个 `benchmark` 固定组合和一个 `portfolio` 动态组合；初始资金、执行时间、成本和资产上限一致，资金账各自连续。`--budget` 在动态模式下只覆盖固定对照的预算，选择器预算由配置 `selector.strategy_budget` 控制。
+
+示例规则 `purged-regime-mean-v1` 用当时资产回看收益均值的正负区分两种状态；只用成熟影子标签学习各状态采用动量、跌幅回归还是现金。默认收益期限 5 天、训练 180 天、验证 60 天、每 30 天研究一次，冻结后至少隔 1 天才生效，新决策仍延迟到下一根收盘执行。训练剔除跨验证边界的标签，按固定日历抽取不重叠持有期样本，验证不重新拟合；样本不足时等待，验证失败则冻结现金回退版本。参数是本次工程假设，未按本轮结果调优。
+
+标签描述策略持续影子运行的扣费后区间收益，不是假定单笔买入持有，也不是实际动态组合收益。结束时未成熟标签保持待定，JSON 中的 `selector.pending_feedback` 可查看数量。`selector_events` 追加标签登记／成熟、拒绝研究、版本冻结／生效事件，`allocation_decisions` 保存每次实际采用的已生效版本、状态和预算理由。起点之前只预热价格，不回填影子反馈。
+
+当前 65 项测试和 BTC/SOL 全区间核验通过。首版动态组合从 100,000 运行至 77,606.27，净收益 **-22.39%**、最大回撤 **-49.68%**、平均现金比例 **93.09%**；同区间固定组合净收益为 388.25%。这组规则未证明优于固定组合或现金，版本与失败记录已保留。内部验证分数只是研究代理，风险预算匹配及冻结后新增数据确认仍待后续完善。
 
 ## 接入 BTC 和 SOL 历史数据
 
