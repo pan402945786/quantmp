@@ -2,7 +2,7 @@
 
 项目核心目标是检验依据当时信息挑选策略组合、持续积累扣除成本后收益的能力。后续开发以 [历史时钟驱动的策略组合研究与模拟实盘](docs/strategy-selection-replay.md) 为主线：受限历史数据 → 研究与内部验证 → 冻结版本 → 向前模拟 → 成熟结果复盘 → 调整组合或补充策略库。
 
-当前已实现价差监控、BTC/SOL 数据下载和静态策略回测。阶段 A 已修复费用预留、负现金、扣费后仓位及初始权益统计，并使实验保存不可覆盖；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 B 的历史时钟与访问隔离，组合选择器与研究改进循环仍待实现。总体背景见 [研究系统设计](docs/research-system-design.md)。
+当前已实现价差监控、BTC/SOL 数据下载及四个固定策略的历史回放。阶段 A 完成资金账务和不可覆盖保存，阶段 B 完成 UTC 历史时钟、只读历史视图及延迟订单；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 C 的影子账与固定策略组合，组合选择器与研究改进循环仍待实现。总体背景见 [研究系统设计](docs/research-system-design.md)。
 
 ## 跨交易所现货价差监控
 
@@ -35,17 +35,23 @@ python arbitrage.py
 
 ## 研究闭环（阶段 1）
 
-按照 [研究系统阶段 1 实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的静态研究入口。默认使用 BTC/SOL 历史数据，也可指定 `--data data/demo_prices.csv` 使用演示面板；比较简单动量、跌幅回归候选（`relative_reversion`）、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。当前回归候选尚未剔除市场影响。
+按照 [实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的历史回放入口。默认使用 BTC/SOL 历史数据，也可指定 `--data data/demo_prices.csv` 使用演示面板；比较简单动量、跌幅回归候选（`relative_reversion`）、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。当前回归候选尚未剔除市场影响。
 
 ```powershell
 python research.py
 python research.py --strategy momentum --json
+python research.py --start 2022-01-01T00:00:00Z --end 2022-02-01T00:00:00Z --json
+python research.py --data-delay-seconds 60 --database research_delay.sqlite3 --json
 python -m unittest -v
 ```
 
 研究结果写入 `research.sqlite3`，其中保存实验配置和数据哈希、每次预测、交易、每日组合权益及指标。该数据库文件默认被忽略，不会提交到 Git。设计依据和当前边界见 [研究系统设计](docs/research-system-design.md) 与 [阶段 1 实现记录](docs/research-system-implementation.md)。
 
-仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；`0.2.0` 账务版本会生成新的实验 ID，保留旧版本记录。
+仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；`0.3.0` 回放版本会生成新的实验 ID，保留旧版本记录。
+
+日期 D 的收盘数据在 D+1 日 UTC 零点加发布延迟后释放；策略只收到此时可见的只读历史，不接触未来价格或全量文件摘要。新目标在下一根日线收盘执行，先处理旧订单，再形成新决策。可用时间延迟 `data_delay_seconds` 默认为 0，首版支持 `[0, 86400)` 秒。
+
+`--start`、`--end` 为带时区的可用时间边界，包含边界上的释放事件；起点落在两次释放之间时，从下一次释放开始，起点前数据仅作预热。也可在配置中设置 `start_at`、`end_at` 和 `data_delay_seconds`。结束时不补读未来数据，`pending_orders` 表示尚待执行的目标数（含现金目标）。决策快照摘要和订单事件分别追加到 `decision_audit`、`order_events` 表。这个入口尚未训练选择器或运行策略扩充循环。
 
 ## 接入 BTC 和 SOL 历史数据
 

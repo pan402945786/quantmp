@@ -1,4 +1,4 @@
-"""Run the phase-1 local research loop."""
+"""Run deterministic research with a UTC historical clock and delayed orders."""
 
 from __future__ import annotations
 
@@ -15,11 +15,18 @@ def main() -> int:
     parser.add_argument("--config", default="research_config.json")
     parser.add_argument("--database", help="override the SQLite output path")
     parser.add_argument("--strategy", choices=["all", *STRATEGIES], default="all")
+    parser.add_argument("--start", dest="start_at", help="inclusive first release time, with timezone")
+    parser.add_argument("--end", dest="end_at", help="inclusive final release time, with timezone")
+    parser.add_argument("--data-delay-seconds", type=float, help="daily-close availability delay, below 86400")
     parser.add_argument("--json", action="store_true", dest="as_json", help="print machine-readable results")
     args = parser.parse_args()
     try:
         with open(args.config, encoding="utf-8") as handle:
             config = json.load(handle)
+        for key in ("start_at", "end_at", "data_delay_seconds"):
+            value = getattr(args, key)
+            if value is not None:
+                config[key] = value
         strategies = list(STRATEGIES) if args.strategy == "all" else [args.strategy]
         data_path = args.data or config.get("data", "data/demo_prices.csv")
         database = args.database or config.get("database", "research.sqlite3")
@@ -29,7 +36,9 @@ def main() -> int:
         return 1
     if args.as_json:
         print(json.dumps({"experiment_id": identifier,
-                          "results": [{"strategy": item.strategy, **item.metrics} for item in results]}, indent=2))
+                          "results": [{"strategy": item.strategy, **item.metrics,
+                                       "pending_orders": sum(event["event"] == "pending" for event in item.order_events)}
+                                      for item in results]}, indent=2))
     else:
         print(f"experiment={identifier}")
         print(f"data={data_path} database={database}")
@@ -39,7 +48,8 @@ def main() -> int:
                   f"annualized={item.metrics['annualized_return']:.2%} "
                   f"max_drawdown={item.metrics['max_drawdown']:.2%} "
                   f"volatility={item.metrics['volatility']:.2%} "
-                  f"turnover={item.metrics['turnover']:.2f}")
+                  f"turnover={item.metrics['turnover']:.2f} "
+                  f"pending={sum(event['event'] == 'pending' for event in item.order_events)}")
     return 0
 
 

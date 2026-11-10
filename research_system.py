@@ -8,12 +8,17 @@ import json
 import math
 import sqlite3
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Callable, Iterable
+from types import MappingProxyType
+from typing import Callable, Iterable, Mapping
+
+from historical_replay import (
+    PROTOCOL_VERSION, DailyReplay, HistoryView, ScheduledTargets, utc_timestamp, validate_delay,
+)
 
 
-VERSION = "research-system-0.2.0"
+VERSION = "research-system-0.3.0"
 
 
 @dataclass(frozen=True)
@@ -35,9 +40,10 @@ class BacktestResult:
     trades: tuple[dict, ...]
     portfolio: tuple[dict, ...]
     metrics: dict[str, float]
+    order_events: tuple[dict, ...] = ()
 
 
-TargetFunction = Callable[[str, PricePanel, dict], dict[str, float]]
+TargetFunction = Callable[[str, HistoryView, Mapping], dict[str, float]]
 
 
 def _finite_float(value: str, field: str) -> float:
@@ -121,7 +127,7 @@ def _cap_weights(scores: dict[str, float], max_weight: float) -> dict[str, float
     return {asset: weight for asset, weight in weights.items() if weight > 1e-12}
 
 
-def momentum_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
+def momentum_targets(on: str, panel: HistoryView, config: Mapping) -> dict[str, float]:
     lookback = int(config["lookback_days"])
     index = panel.dates.index(on)
     if index < lookback:
@@ -135,7 +141,7 @@ def momentum_targets(on: str, panel: PricePanel, config: dict) -> dict[str, floa
     return _cap_weights(scores, float(config["max_weight"]))
 
 
-def relative_reversion_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
+def relative_reversion_targets(on: str, panel: HistoryView, config: Mapping) -> dict[str, float]:
     """Allocate toward assets with negative cross-sectional lookback returns."""
     lookback = int(config["lookback_days"])
     index = panel.dates.index(on)
@@ -150,12 +156,12 @@ def relative_reversion_targets(on: str, panel: PricePanel, config: dict) -> dict
     return _cap_weights(scores, float(config["max_weight"]))
 
 
-def equal_weight_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
+def equal_weight_targets(on: str, panel: HistoryView, config: Mapping) -> dict[str, float]:
     weight = 1.0 / len(panel.assets)
     return _cap_weights({asset: 1.0 for asset in panel.assets}, float(config["max_weight"])) if weight else {}
 
 
-def cash_targets(on: str, panel: PricePanel, config: dict) -> dict[str, float]:
+def cash_targets(on: str, panel: HistoryView, config: Mapping) -> dict[str, float]:
     return {}
 
 
@@ -174,6 +180,9 @@ def _validate_config(config: dict) -> dict:
         "max_weight": float(config.get("max_weight", 1.0)),
         "transaction_cost_bps": float(config.get("transaction_cost_bps", 10)),
         "strategy_version": str(config.get("strategy_version", VERSION)),
+        "data_delay_seconds": validate_delay(config.get("data_delay_seconds", 0)),
+        "start_at": utc_timestamp(config["start_at"]) if config.get("start_at") is not None else None,
+        "end_at": utc_timestamp(config["end_at"]) if config.get("end_at") is not None else None,
     }
     if not math.isfinite(result["initial_capital"]) or result["initial_capital"] <= 0:
         raise ValueError("initial_capital must be positive")
@@ -183,6 +192,8 @@ def _validate_config(config: dict) -> dict:
         raise ValueError("max_weight must be in (0, 1]")
     if not math.isfinite(result["transaction_cost_bps"]) or not 0 <= result["transaction_cost_bps"] < 10000:
         raise ValueError("transaction_cost_bps must be in [0, 10000) for unlevered spot execution")
+    if result["start_at"] is not None and result["end_at"] is not None and result["start_at"] > result["end_at"]:
+        raise ValueError("start_at must not be later than end_at")
     return result
 
 
@@ -250,27 +261,57 @@ def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
     if strategy not in STRATEGIES:
         raise ValueError(f"unknown strategy: {strategy}")
     lookback = cfg["lookback_days"]
-    if len(panel.dates) <= lookback + 1:
+    if len(panel.dates) < lookback + 1:
         raise ValueError("price history is too short for the configured lookback")
     if any((date.fromisoformat(current) - date.fromisoformat(previous)).days != 1
            for previous, current in zip(panel.dates, panel.dates[1:])):
         raise ValueError("backtest requires consecutive daily prices; missing dates cannot be filled")
     target_fn = STRATEGIES[strategy]
+    replay = DailyReplay(panel.dates, panel.prices, cfg["data_delay_seconds"])
+    # Operational boundaries and full-data metadata are simulator inputs only.
+    strategy_config = MappingProxyType({key: cfg[key] for key in (
+        "initial_capital", "lookback_days", "max_weight", "transaction_cost_bps", "strategy_version")})
     cash = cfg["initial_capital"]
     units = {asset: 0.0 for asset in panel.assets}
     predictions: list[dict] = []
     trades: list[dict] = []
-    portfolio: list[dict] = [{
-        "date": panel.dates[lookback], "equity": cash, "cash": cash,
-        "weights": {asset: 0.0 for asset in panel.assets}, "traded": False,
-    }]
+    portfolio: list[dict] = []
+    order_events: list[dict] = []
+    pending: ScheduledTargets | None = None
     turnover = 0.0
-    for index in range(lookback, len(panel.dates) - 1):
-        decision_date = panel.dates[index]
-        execution_date = panel.dates[index + 1]
-        execution_prices = {asset: panel.price(execution_date, asset) for asset in panel.assets}
-        value_before = cash + math.fsum(units[asset] * execution_prices[asset] for asset in panel.assets)
-        targets = target_fn(decision_date, panel, cfg)
+    for index, on in enumerate(panel.dates):
+        clock = replay.available_at(on)
+        if index < lookback or (cfg["start_at"] is not None and clock < cfg["start_at"]):
+            continue
+        if cfg["end_at"] is not None and clock > cfg["end_at"]:
+            break
+        history = replay.advance_to(clock)
+        execution_prices = {asset: history.price(on, asset) for asset in panel.assets}
+        traded_value = 0.0
+        if pending is not None:
+            if pending.execution_date != on:
+                raise ValueError("missing execution bar for a pending order")
+            filled_event = pending.event("filled", clock)
+            current_values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
+            value_before = cash + math.fsum(current_values.values())
+            target_values, trade_values, cash, _ = _rebalance(
+                current_values, cash, dict(pending.targets), cfg["transaction_cost_bps"] / 10000.0)
+            traded_value = math.fsum(abs(value) for value in trade_values.values())
+            turnover += traded_value / value_before if value_before else 0.0
+            units = {asset: target_values[asset] / execution_prices[asset] for asset in panel.assets}
+            for asset in panel.assets:
+                if trade_values[asset] != 0.0:
+                    trades.append({"date": on, "asset": asset, "side": "buy" if trade_values[asset] > 0 else "sell",
+                                   "price": execution_prices[asset], "notional": abs(trade_values[asset]),
+                                   "fee": abs(trade_values[asset]) * cfg["transaction_cost_bps"] / 10000.0})
+            order_events.append(filled_event)
+        values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
+        equity = cash + math.fsum(values.values())
+        portfolio.append({"date": on, "as_of": clock.isoformat(), "equity": equity, "cash": cash,
+                          "weights": {asset: values[asset] / equity for asset in panel.assets},
+                          "traded": traded_value > 0.0})
+        # Settle the preceding order before asking the strategy for a new one.
+        targets = target_fn(on, history, strategy_config)
         if any(asset not in units for asset in targets):
             raise ValueError(f"{strategy} produced an unknown asset")
         targets = {asset: float(weight) for asset, weight in targets.items()}
@@ -282,26 +323,22 @@ def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
             raise ValueError(f"{strategy} produced more than 100% gross exposure")
         if target_total > 1.0:
             targets = {asset: weight / target_total for asset, weight in targets.items()}
-        current_values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
-        target_values, trade_values, cash, _ = _rebalance(
-            current_values, cash, targets, cfg["transaction_cost_bps"] / 10000.0)
-        traded_value = math.fsum(abs(value) for value in trade_values.values())
-        turnover += traded_value / value_before if value_before else 0.0
-        units = {asset: target_values[asset] / execution_prices[asset] for asset in panel.assets}
-        for asset in panel.assets:
-            if trade_values[asset] != 0.0:
-                trades.append({"date": execution_date, "asset": asset, "side": "buy" if trade_values[asset] > 0 else "sell",
-                               "price": execution_prices[asset], "notional": abs(trade_values[asset]),
-                               "fee": abs(trade_values[asset]) * cfg["transaction_cost_bps"] / 10000.0})
-        predictions.append({"decision_date": decision_date, "execution_date": execution_date,
-                            "targets": targets, "signals": {asset: panel.price(decision_date, asset) /
-                            panel.price(panel.dates[index - lookback], asset) - 1.0 for asset in panel.assets}})
-        equity = cash + math.fsum(target_values.values())
-        portfolio.append({"date": execution_date, "equity": equity, "cash": cash,
-                          "weights": {asset: target_values[asset] / equity for asset in panel.assets},
-                          "traded": traded_value > 0.0})
+        execution_date = (date.fromisoformat(on) + timedelta(days=1)).isoformat()
+        pending = ScheduledTargets(on, clock, execution_date, targets)
+        predictions.append({"decision_date": on, "decision_at": clock.isoformat(),
+                            "execution_date": execution_date, "execution_at": pending.execution_at.isoformat(),
+                            "history_hash": history.content_hash, "visible_rows": len(history.dates),
+                            "latest_available_at": history.timing(on).available_at.isoformat(),
+                            "protocol_version": PROTOCOL_VERSION, "targets": dict(pending.targets),
+                            "signals": {asset: history.price(on, asset) /
+                            history.price(history.dates[-lookback - 1], asset) - 1.0 for asset in history.assets}})
+        order_events.append(pending.event("submitted", clock))
+    if not portfolio:
+        raise ValueError("no replay events in the requested interval after warmup")
+    if pending is not None:
+        order_events.append(pending.event("pending", history.as_of))
     metrics = _metrics(portfolio, cfg["initial_capital"], turnover)
-    return BacktestResult(strategy, tuple(predictions), tuple(trades), tuple(portfolio), metrics)
+    return BacktestResult(strategy, tuple(predictions), tuple(trades), tuple(portfolio), metrics, tuple(order_events))
 
 
 def experiment_id(panel: PricePanel, config: dict, strategies: Iterable[str]) -> str:
@@ -334,6 +371,18 @@ def setup_research_db(path: str | Path) -> sqlite3.Connection:
         experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, metric TEXT NOT NULL, value REAL NOT NULL,
         PRIMARY KEY (experiment_id, strategy, metric)
     );
+    CREATE TABLE IF NOT EXISTS decision_audit (
+        experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, decision_date TEXT NOT NULL,
+        decision_at TEXT NOT NULL, history_hash TEXT NOT NULL, visible_rows INTEGER NOT NULL,
+        latest_available_at TEXT NOT NULL, protocol_version TEXT NOT NULL,
+        PRIMARY KEY (experiment_id, strategy, decision_date)
+    );
+    CREATE TABLE IF NOT EXISTS order_events (
+        experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, decision_date TEXT NOT NULL,
+        event TEXT NOT NULL, event_at TEXT NOT NULL, processed_at TEXT NOT NULL,
+        execution_date TEXT NOT NULL, execution_at TEXT NOT NULL,
+        PRIMARY KEY (experiment_id, strategy, decision_date, event)
+    );
     """)
     db.commit()
     return db
@@ -346,12 +395,16 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
     if not selected or len({result.strategy for result in selected}) != len(selected):
         raise ValueError("experiment requires non-empty, unique strategy results")
     records: dict[str, list[tuple]] = {table: [] for table in (
-        "predictions", "trades", "portfolio_daily", "metrics")}
+        "predictions", "trades", "portfolio_daily", "metrics", "decision_audit", "order_events")}
     for result in selected:
         for prediction in result.predictions:
             records["predictions"].append((
                 experiment, result.strategy, prediction["decision_date"], prediction["execution_date"],
                 json.dumps(prediction["targets"], sort_keys=True), json.dumps(prediction["signals"], sort_keys=True)))
+            records["decision_audit"].append((
+                experiment, result.strategy, prediction["decision_date"], prediction["decision_at"],
+                prediction["history_hash"], prediction["visible_rows"], prediction["latest_available_at"],
+                prediction["protocol_version"]))
         for trade in result.trades:
             records["trades"].append((
                 experiment, result.strategy, trade["date"], trade["asset"], trade["side"],
@@ -362,6 +415,10 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
                 json.dumps(row["weights"], sort_keys=True), int(row["traded"])))
         for metric, value in result.metrics.items():
             records["metrics"].append((experiment, result.strategy, metric, value))
+        for event in result.order_events:
+            records["order_events"].append((
+                experiment, result.strategy, event["decision_date"], event["event"], event["event_at"],
+                event["processed_at"], event["execution_date"], event["execution_at"]))
     metadata = (panel.source, panel.content_hash, json.dumps(config, sort_keys=True), VERSION, "completed")
     with db:
         existing = db.execute(

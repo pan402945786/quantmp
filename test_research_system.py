@@ -35,7 +35,7 @@ class ResearchSystemTests(unittest.TestCase):
         result = backtest(self.constant_panel(), config, "equal_weight")
         expected = 100 / 1.01
         self.assertEqual(result.portfolio[0], {
-            "date": "2025-01-02", "equity": 100, "cash": 100,
+            "date": "2025-01-02", "as_of": "2025-01-03T00:00:00+00:00", "equity": 100, "cash": 100,
             "weights": {"AAA": 0.0, "BBB": 0.0}, "traded": False,
         })
         self.assertAlmostEqual(result.portfolio[1]["equity"], expected)
