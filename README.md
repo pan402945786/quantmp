@@ -2,7 +2,7 @@
 
 项目核心目标是检验依据当时信息挑选策略组合、持续积累扣除成本后收益的能力。后续开发以 [历史时钟驱动的策略组合研究与模拟实盘](docs/strategy-selection-replay.md) 为主线：受限历史数据 → 研究与内部验证 → 冻结版本 → 向前模拟 → 成熟结果复盘 → 调整组合或补充策略库。
 
-当前已实现价差监控、BTC/SOL 数据下载及四个固定策略的历史回放。阶段 A 完成资金账务和不可覆盖保存，阶段 B 完成 UTC 历史时钟、只读历史视图及延迟订单；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 C 的影子账与固定策略组合，组合选择器与研究改进循环仍待实现。总体背景见 [研究系统设计](docs/research-system-design.md)。
+当前已实现价差监控、BTC/SOL 数据下载、四个策略的独立影子账和固定策略组合。阶段 A、B、C 分别完成资金账务、历史时钟隔离与连续组合；验证范围见 [实现记录](docs/research-system-implementation.md)。下一步是阶段 D 的选择器、成熟反馈和版本生效管理，研究改进循环仍待实现。总体背景见 [研究系统设计](docs/research-system-design.md)。
 
 ## 跨交易所现货价差监控
 
@@ -47,11 +47,27 @@ python -m unittest -v
 
 研究结果写入 `research.sqlite3`，其中保存实验配置和数据哈希、每次预测、交易、每日组合权益及指标。该数据库文件默认被忽略，不会提交到 Git。设计依据和当前边界见 [研究系统设计](docs/research-system-design.md) 与 [阶段 1 实现记录](docs/research-system-implementation.md)。
 
-仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；`0.3.0` 回放版本会生成新的实验 ID，保留旧版本记录。
+仓位以扣费后权益为基数，买卖费用按实际净成交额计提，未投资资金保留为现金；权益序列包含首次决策时的初始资金点。回测要求日期连续的完整日线面板，缺日会报错。实验相同输入、相同结果重复保存不修改历史，结果冲突则拒绝覆盖；当前 `0.4.0` 版本会生成新的实验 ID，保留旧版本记录。
 
 日期 D 的收盘数据在 D+1 日 UTC 零点加发布延迟后释放；策略只收到此时可见的只读历史，不接触未来价格或全量文件摘要。新目标在下一根日线收盘执行，先处理旧订单，再形成新决策。可用时间延迟 `data_delay_seconds` 默认为 0，首版支持 `[0, 86400)` 秒。
 
 `--start`、`--end` 为带时区的可用时间边界，包含边界上的释放事件；起点落在两次释放之间时，从下一次释放开始，起点前数据仅作预热。也可在配置中设置 `start_at`、`end_at` 和 `data_delay_seconds`。结束时不补读未来数据，`pending_orders` 表示尚待执行的目标数（含现金目标）。决策快照摘要和订单事件分别追加到 `decision_audit`、`order_events` 表。这个入口尚未训练选择器或运行策略扩充循环。
+
+## 固定策略组合与影子账
+
+```powershell
+python research.py --portfolio --config research_mix_config.json --json
+python research.py --portfolio --config research_mix_config.json --budget momentum=0.4 --budget relative_reversion=0.4
+python research.py --portfolio --config research_mix_config.json --start 2022-01-01T00:00:00Z --end 2022-02-01T00:00:00Z --data-delay-seconds 60
+```
+
+示例配置冻结动量与跌幅回归各 50% 的策略预算，默认写入 `research_mix.sqlite3`；这是工程对照方案，未经收益优选。`strategy_budgets` 的总额不得超过 100%，未列出的策略预算为零。重复的 `--budget 策略=比例` 参数会整体替换配置预算；总额小于 100% 时，余额留作现金。策略自身空仓也保留对应预算，不会把资金自动转给其他策略。`--portfolio` 与 `--strategy` 互斥。
+
+每个时点只生成一次各策略信号，按策略预算乘以资产目标权重合并，检查单资产和总仓位，再与实际组合持仓比较形成净订单；策略间相反的调仓先抵消，手续费仅按最终净成交额计算。组合的现金、持仓和净值逐日连续，不把独立影子收益加总为组合收益。
+
+输出中的 `role=shadow` 是各自使用相同初始资金、成本及执行规则的独立假设账户，零预算策略也持续记录；`role=portfolio` 才是固定组合的实际模拟资金账。原单策略入口使用 `role=standalone`。结果提供累计 `total_fees` 和逐日权益点现金比例均值 `average_cash_weight`（含初始点）；不同账户的风险暴露仍可能不同。
+
+`account_roles` 保存账户角色，`allocation_decisions` 追加每次预算、各策略目标、资产权重贡献、现金目标、风险检查和可见证据。权重贡献表示目标暴露，不是收益归因。当前 51 项测试及 BTC/SOL 对照结果见 [实现记录](docs/research-system-implementation.md)。
 
 ## 接入 BTC 和 SOL 历史数据
 

@@ -1,0 +1,14 @@
+{
+  "initial_capital": 100000,
+  "lookback_days": 5,
+  "max_weight": 0.6,
+  "transaction_cost_bps": 10,
+  "strategy_version": "research-phase1-btc-sol-v1",
+  "data_delay_seconds": 0,
+  "strategy_budgets": {
+    "momentum": 0.5,
+    "relative_reversion": 0.5
+  },
+  "database": "research_mix.sqlite3",
+  "data": "data/btc_sol_daily.csv"
+}

@@ -7,7 +7,7 @@ import hashlib
 import json
 import math
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from types import MappingProxyType
@@ -18,7 +18,9 @@ from historical_replay import (
 )
 
 
-VERSION = "research-system-0.3.0"
+VERSION = "research-system-0.4.0"
+MIX_RULE = "fixed-strategy-budgets-v1"
+DEFAULT_STRATEGY_BUDGETS = MappingProxyType({"momentum": 0.5, "relative_reversion": 0.5})
 
 
 @dataclass(frozen=True)
@@ -41,6 +43,8 @@ class BacktestResult:
     portfolio: tuple[dict, ...]
     metrics: dict[str, float]
     order_events: tuple[dict, ...] = ()
+    role: str = "standalone"
+    allocations: tuple[dict, ...] = ()
 
 
 TargetFunction = Callable[[str, HistoryView, Mapping], dict[str, float]]
@@ -256,29 +260,158 @@ def _metrics(portfolio: list[dict], initial_capital: float, turnover: float) -> 
             "rebalances": float(sum(1 for row in portfolio if row["traded"]))}
 
 
-def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
+def _validate_targets(targets: Mapping, assets: Iterable[str], max_weight: float, name: str) -> dict[str, float]:
+    if not isinstance(targets, Mapping):
+        raise ValueError(f"{name} must produce an object mapping assets to weights")
+    if not 0 < max_weight <= 1:
+        raise ValueError("max_weight must be in (0, 1]")
+    if any(asset not in assets for asset in targets):
+        raise ValueError(f"{name} produced an unknown asset")
+    try:
+        targets = {asset: float(weight) for asset, weight in targets.items()}
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} target weights must be numbers") from exc
+    if any(not math.isfinite(weight) or weight < 0 for weight in targets.values()):
+        raise ValueError(f"{name} produced a non-finite or negative target")
+    targets = {asset: min(weight, max_weight) for asset, weight in targets.items()}
+    total = math.fsum(targets.values())
+    if total > 1.0 + 1e-12:
+        raise ValueError(f"{name} produced more than 100% gross exposure")
+    if total > 1.0:
+        targets = {asset: weight / total for asset, weight in targets.items()}
+    return targets
+
+
+def _validate_budgets(budgets: Mapping, candidates: Iterable[str]) -> dict[str, float]:
+    if not isinstance(budgets, Mapping):
+        raise ValueError("strategy_budgets must be an object mapping strategies to weights")
+    names = tuple(candidates)
+    if any(name not in names for name in budgets):
+        raise ValueError("strategy_budgets contains an unknown strategy")
+    try:
+        result = {name: float(budgets.get(name, 0.0)) for name in names}
+    except (TypeError, ValueError) as exc:
+        raise ValueError("strategy budgets must be numbers") from exc
+    if any(not math.isfinite(weight) or weight < 0 or weight > 1 for weight in result.values()):
+        raise ValueError("strategy budgets must be finite and in [0, 1]")
+    total = math.fsum(result.values())
+    if total > 1.0 + 1e-12:
+        raise ValueError("strategy budgets exceed 100% of portfolio capital")
+    if total > 1.0:
+        result = {name: weight / total for name, weight in result.items()}
+    return result
+
+
+def merge_strategy_targets(component_targets: Mapping[str, Mapping[str, float]],
+                           budgets: Mapping[str, float], assets: Iterable[str],
+                           max_weight: float) -> dict[str, float]:
+    """Convert frozen strategy capital budgets into a single asset target."""
+    budgets = _validate_budgets(budgets, component_targets)
+    assets = tuple(assets)
+    components = {name: _validate_targets(targets, assets, max_weight, name)
+                  for name, targets in component_targets.items()}
+    merged = {asset: math.fsum(budgets[name] * targets.get(asset, 0.0)
+                              for name, targets in components.items()) for asset in assets}
+    return _validate_targets({asset: weight for asset, weight in merged.items() if weight > 0},
+                             assets, max_weight, "fixed_mix")
+
+
+@dataclass
+class _PortfolioLedger:
+    name: str
+    role: str
+    config: dict
+    assets: tuple[str, ...]
+    cash: float = field(init=False)
+    units: dict[str, float] = field(init=False)
+    predictions: list[dict] = field(default_factory=list)
+    trades: list[dict] = field(default_factory=list)
+    portfolio: list[dict] = field(default_factory=list)
+    order_events: list[dict] = field(default_factory=list)
+    allocations: list[dict] = field(default_factory=list)
+    pending: ScheduledTargets | None = None
+    turnover: float = 0.0
+
+    def __post_init__(self):
+        self.cash = self.config["initial_capital"]
+        self.units = dict.fromkeys(self.assets, 0.0)
+
+    def observe(self, history: HistoryView) -> None:
+        on = history.dates[-1]
+        clock = history.as_of
+        execution_prices = {asset: history.price(on, asset) for asset in self.assets}
+        traded_value = 0.0
+        if self.pending is not None:
+            if self.pending.execution_date != on:
+                raise ValueError("missing execution bar for a pending order")
+            filled_event = self.pending.event("filled", clock)
+            current_values = {asset: self.units[asset] * execution_prices[asset] for asset in self.assets}
+            value_before = self.cash + math.fsum(current_values.values())
+            target_values, trade_values, self.cash, _ = _rebalance(
+                current_values, self.cash, dict(self.pending.targets), self.config["transaction_cost_bps"] / 10000.0)
+            traded_value = math.fsum(abs(value) for value in trade_values.values())
+            self.turnover += traded_value / value_before if value_before else 0.0
+            self.units = {asset: target_values[asset] / execution_prices[asset] for asset in self.assets}
+            for asset in self.assets:
+                if trade_values[asset] != 0.0:
+                    self.trades.append({"date": on, "asset": asset, "side": "buy" if trade_values[asset] > 0 else "sell",
+                                        "price": execution_prices[asset], "notional": abs(trade_values[asset]),
+                                        "fee": abs(trade_values[asset]) * self.config["transaction_cost_bps"] / 10000.0})
+            self.order_events.append(filled_event)
+            self.pending = None
+        values = {asset: self.units[asset] * execution_prices[asset] for asset in self.assets}
+        equity = self.cash + math.fsum(values.values())
+        self.portfolio.append({"date": on, "as_of": clock.isoformat(), "equity": equity, "cash": self.cash,
+                               "weights": {asset: values[asset] / equity for asset in self.assets},
+                               "traded": traded_value > 0.0})
+
+    def submit(self, history: HistoryView, targets: dict[str, float], signals: dict[str, float]) -> None:
+        on = history.dates[-1]
+        clock = history.as_of
+        execution_date = (date.fromisoformat(on) + timedelta(days=1)).isoformat()
+        self.pending = ScheduledTargets(on, clock, execution_date, targets)
+        self.predictions.append({"decision_date": on, "decision_at": clock.isoformat(),
+                                 "execution_date": execution_date, "execution_at": self.pending.execution_at.isoformat(),
+                                 "history_hash": history.content_hash, "visible_rows": len(history.dates),
+                                 "latest_available_at": history.timing(on).available_at.isoformat(),
+                                 "protocol_version": PROTOCOL_VERSION, "targets": dict(self.pending.targets),
+                                 "signals": dict(signals)})
+        self.order_events.append(self.pending.event("submitted", clock))
+
+    def finish(self) -> BacktestResult:
+        events = list(self.order_events)
+        if self.pending is not None:
+            events.append(self.pending.event("pending", utc_timestamp(self.portfolio[-1]["as_of"])))
+        metrics = _metrics(self.portfolio, self.config["initial_capital"], self.turnover)
+        metrics["total_fees"] = math.fsum(trade["fee"] for trade in self.trades)
+        metrics["average_cash_weight"] = math.fsum(row["cash"] / row["equity"] for row in self.portfolio) / len(self.portfolio)
+        return BacktestResult(self.name, tuple(self.predictions), tuple(self.trades), tuple(self.portfolio),
+                              metrics, tuple(events), self.role, tuple(self.allocations))
+
+
+def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
+              budgets: Mapping[str, float] | None = None) -> list[BacktestResult]:
     cfg = _validate_config(config)
-    if strategy not in STRATEGIES:
-        raise ValueError(f"unknown strategy: {strategy}")
+    names = tuple(candidates)
+    if not names or len(set(names)) != len(names) or any(name not in STRATEGIES for name in names):
+        raise ValueError("replay requires non-empty, unique, known strategies")
+    if budgets is not None and "fixed_mix" in names:
+        raise ValueError("fixed_mix is reserved for the portfolio account")
+    frozen_budgets = _validate_budgets(budgets, names) if budgets is not None else None
+    functions = {name: STRATEGIES[name] for name in names}
     lookback = cfg["lookback_days"]
     if len(panel.dates) < lookback + 1:
         raise ValueError("price history is too short for the configured lookback")
     if any((date.fromisoformat(current) - date.fromisoformat(previous)).days != 1
            for previous, current in zip(panel.dates, panel.dates[1:])):
         raise ValueError("backtest requires consecutive daily prices; missing dates cannot be filled")
-    target_fn = STRATEGIES[strategy]
     replay = DailyReplay(panel.dates, panel.prices, cfg["data_delay_seconds"])
-    # Operational boundaries and full-data metadata are simulator inputs only.
     strategy_config = MappingProxyType({key: cfg[key] for key in (
         "initial_capital", "lookback_days", "max_weight", "transaction_cost_bps", "strategy_version")})
-    cash = cfg["initial_capital"]
-    units = {asset: 0.0 for asset in panel.assets}
-    predictions: list[dict] = []
-    trades: list[dict] = []
-    portfolio: list[dict] = []
-    order_events: list[dict] = []
-    pending: ScheduledTargets | None = None
-    turnover = 0.0
+    ledgers = {name: _PortfolioLedger(name, "shadow" if budgets is not None else "standalone", cfg, panel.assets)
+               for name in names}
+    actual = _PortfolioLedger("fixed_mix", "portfolio", cfg, panel.assets) if budgets is not None else None
+    accounts = [*ledgers.values(), *([actual] if actual is not None else [])]
     for index, on in enumerate(panel.dates):
         clock = replay.available_at(on)
         if index < lookback or (cfg["start_at"] is not None and clock < cfg["start_at"]):
@@ -286,59 +419,44 @@ def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
         if cfg["end_at"] is not None and clock > cfg["end_at"]:
             break
         history = replay.advance_to(clock)
-        execution_prices = {asset: history.price(on, asset) for asset in panel.assets}
-        traded_value = 0.0
-        if pending is not None:
-            if pending.execution_date != on:
-                raise ValueError("missing execution bar for a pending order")
-            filled_event = pending.event("filled", clock)
-            current_values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
-            value_before = cash + math.fsum(current_values.values())
-            target_values, trade_values, cash, _ = _rebalance(
-                current_values, cash, dict(pending.targets), cfg["transaction_cost_bps"] / 10000.0)
-            traded_value = math.fsum(abs(value) for value in trade_values.values())
-            turnover += traded_value / value_before if value_before else 0.0
-            units = {asset: target_values[asset] / execution_prices[asset] for asset in panel.assets}
-            for asset in panel.assets:
-                if trade_values[asset] != 0.0:
-                    trades.append({"date": on, "asset": asset, "side": "buy" if trade_values[asset] > 0 else "sell",
-                                   "price": execution_prices[asset], "notional": abs(trade_values[asset]),
-                                   "fee": abs(trade_values[asset]) * cfg["transaction_cost_bps"] / 10000.0})
-            order_events.append(filled_event)
-        values = {asset: units[asset] * execution_prices[asset] for asset in panel.assets}
-        equity = cash + math.fsum(values.values())
-        portfolio.append({"date": on, "as_of": clock.isoformat(), "equity": equity, "cash": cash,
-                          "weights": {asset: values[asset] / equity for asset in panel.assets},
-                          "traded": traded_value > 0.0})
-        # Settle the preceding order before asking the strategy for a new one.
-        targets = target_fn(on, history, strategy_config)
-        if any(asset not in units for asset in targets):
-            raise ValueError(f"{strategy} produced an unknown asset")
-        targets = {asset: float(weight) for asset, weight in targets.items()}
-        if any(not math.isfinite(weight) or weight < 0 for weight in targets.values()):
-            raise ValueError(f"{strategy} produced a non-finite or negative target")
-        targets = {asset: min(weight, cfg["max_weight"]) for asset, weight in targets.items()}
-        target_total = math.fsum(targets.values())
-        if target_total > 1.0 + 1e-12:
-            raise ValueError(f"{strategy} produced more than 100% gross exposure")
-        if target_total > 1.0:
-            targets = {asset: weight / target_total for asset, weight in targets.items()}
-        execution_date = (date.fromisoformat(on) + timedelta(days=1)).isoformat()
-        pending = ScheduledTargets(on, clock, execution_date, targets)
-        predictions.append({"decision_date": on, "decision_at": clock.isoformat(),
-                            "execution_date": execution_date, "execution_at": pending.execution_at.isoformat(),
-                            "history_hash": history.content_hash, "visible_rows": len(history.dates),
-                            "latest_available_at": history.timing(on).available_at.isoformat(),
-                            "protocol_version": PROTOCOL_VERSION, "targets": dict(pending.targets),
-                            "signals": {asset: history.price(on, asset) /
-                            history.price(history.dates[-lookback - 1], asset) - 1.0 for asset in history.assets}})
-        order_events.append(pending.event("submitted", clock))
-    if not portfolio:
+        for ledger in accounts:
+            ledger.observe(history)
+        signals = {asset: history.price(on, asset) / history.price(history.dates[-lookback - 1], asset) - 1.0
+                   for asset in history.assets}
+        component_targets = {}
+        for name, target_fn in functions.items():
+            targets = _validate_targets(target_fn(on, history, strategy_config), history.assets, cfg["max_weight"], name)
+            component_targets[name] = targets
+            ledgers[name].submit(history, targets, signals)
+        if actual is not None:
+            targets = merge_strategy_targets(component_targets, frozen_budgets, history.assets, cfg["max_weight"])
+            gross = math.fsum(targets.values())
+            actual.allocations.append({
+                "decision_date": on, "decision_at": clock.isoformat(), "history_hash": history.content_hash,
+                "strategy_budgets": dict(frozen_budgets),
+                "unallocated_cash_budget": max(0.0, 1.0 - math.fsum(frozen_budgets.values())),
+                "strategy_targets": {name: dict(weights) for name, weights in component_targets.items()},
+                "asset_contributions": {name: {asset: frozen_budgets[name] * weight for asset, weight in weights.items()}
+                                        for name, weights in component_targets.items()},
+                "asset_targets": dict(targets), "cash_target": max(0.0, 1.0 - gross),
+                "rule": MIX_RULE, "reason": "frozen strategy budgets; unused strategy exposure remains cash",
+                "risk_check": {"gross_weight": gross, "max_asset_weight": max(targets.values(), default=0.0),
+                               "max_weight": cfg["max_weight"], "passed": True},
+            })
+            actual.submit(history, targets, signals)
+    if not accounts[0].portfolio:
         raise ValueError("no replay events in the requested interval after warmup")
-    if pending is not None:
-        order_events.append(pending.event("pending", history.as_of))
-    metrics = _metrics(portfolio, cfg["initial_capital"], turnover)
-    return BacktestResult(strategy, tuple(predictions), tuple(trades), tuple(portfolio), metrics, tuple(order_events))
+    return [ledger.finish() for ledger in accounts]
+
+
+def backtest(panel: PricePanel, config: dict, strategy: str) -> BacktestResult:
+    return _simulate(panel, config, [strategy])[0]
+
+
+def backtest_fixed_mix(panel: PricePanel, config: dict) -> list[BacktestResult]:
+    """Run every library strategy as an independent shadow and one funded mix."""
+    budgets = _validate_budgets(config.get("strategy_budgets", DEFAULT_STRATEGY_BUDGETS), STRATEGIES)
+    return _simulate(panel, config, STRATEGIES, budgets)
 
 
 def experiment_id(panel: PricePanel, config: dict, strategies: Iterable[str]) -> str:
@@ -383,6 +501,15 @@ def setup_research_db(path: str | Path) -> sqlite3.Connection:
         execution_date TEXT NOT NULL, execution_at TEXT NOT NULL,
         PRIMARY KEY (experiment_id, strategy, decision_date, event)
     );
+    CREATE TABLE IF NOT EXISTS account_roles (
+        experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, role TEXT NOT NULL,
+        PRIMARY KEY (experiment_id, strategy)
+    );
+    CREATE TABLE IF NOT EXISTS allocation_decisions (
+        experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, decision_date TEXT NOT NULL,
+        allocation_json TEXT NOT NULL,
+        PRIMARY KEY (experiment_id, strategy, decision_date)
+    );
     """)
     db.commit()
     return db
@@ -394,9 +521,13 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
     selected = list(results)
     if not selected or len({result.strategy for result in selected}) != len(selected):
         raise ValueError("experiment requires non-empty, unique strategy results")
+    if any(result.role not in {"standalone", "shadow", "portfolio"} for result in selected):
+        raise ValueError("unknown account role")
     records: dict[str, list[tuple]] = {table: [] for table in (
-        "predictions", "trades", "portfolio_daily", "metrics", "decision_audit", "order_events")}
+        "predictions", "trades", "portfolio_daily", "metrics", "decision_audit", "order_events",
+        "account_roles", "allocation_decisions")}
     for result in selected:
+        records["account_roles"].append((experiment, result.strategy, result.role))
         for prediction in result.predictions:
             records["predictions"].append((
                 experiment, result.strategy, prediction["decision_date"], prediction["execution_date"],
@@ -419,6 +550,9 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
             records["order_events"].append((
                 experiment, result.strategy, event["decision_date"], event["event"], event["event_at"],
                 event["processed_at"], event["execution_date"], event["execution_at"]))
+        for allocation in result.allocations:
+            records["allocation_decisions"].append((
+                experiment, result.strategy, allocation["decision_date"], json.dumps(allocation, sort_keys=True)))
     metadata = (panel.source, panel.content_hash, json.dumps(config, sort_keys=True), VERSION, "completed")
     with db:
         existing = db.execute(
@@ -448,11 +582,28 @@ def run_experiment(data_path: str | Path, config: dict, strategies: Iterable[str
         raise ValueError("at least one strategy is required")
     if len(set(selected)) != len(selected):
         raise ValueError("strategies must be unique")
-    results = [backtest(panel, config, strategy) for strategy in selected]
+    results = _simulate(panel, config, selected)
     identifier = experiment_id(panel, config, selected)
     db = setup_research_db(database)
     try:
         save_experiment(db, identifier, panel, config, results)
+    finally:
+        db.close()
+    return identifier, results
+
+
+def run_fixed_mix_experiment(data_path: str | Path, config: dict,
+                             database: str | Path) -> tuple[str, list[BacktestResult]]:
+    """Freeze budgets, persist one actual portfolio and all independent shadows."""
+    panel = load_price_csv(data_path)
+    budgets = _validate_budgets(config.get("strategy_budgets", DEFAULT_STRATEGY_BUDGETS), STRATEGIES)
+    frozen_config = {**config, "strategy_budgets": budgets, "portfolio_rule": MIX_RULE,
+                     "shadow_strategies": list(STRATEGIES)}
+    results = backtest_fixed_mix(panel, frozen_config)
+    identifier = experiment_id(panel, frozen_config, [result.strategy for result in results])
+    db = setup_research_db(database)
+    try:
+        save_experiment(db, identifier, panel, frozen_config, results)
     finally:
         db.close()
     return identifier, results
