@@ -134,7 +134,8 @@ class FeedbackBook:
         self._registered: set[tuple[str, str]] = set()
         self._clock: datetime | None = None
 
-    def register(self, history: HistoryView, names: Iterable[str], state: str) -> list[dict]:
+    def register(self, history: HistoryView, names: Iterable[str], state: str,
+                 strategy_versions: Mapping[str, str] | None = None) -> list[dict]:
         if history.as_of != self._clock or state not in STATES:
             raise ValueError("feedback registration requires the current simulator clock and known state")
         on = date.fromisoformat(history.dates[-1])
@@ -142,7 +143,7 @@ class FeedbackBook:
         end = (on + timedelta(days=self.horizon_days + 1)).isoformat()
         events = []
         for name in names:
-            payload = {"strategy": name, "strategy_version": self._strategy_version,
+            payload = {"strategy": name, "strategy_version": (strategy_versions or {}).get(name, self._strategy_version),
                        "decision_date": on.isoformat(), "decision_at": history.as_of.isoformat(),
                        "execution_date": execution, "end_date": end,
                        "mature_at": (daily_close(end) + self._delay).isoformat(),

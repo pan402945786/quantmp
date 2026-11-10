@@ -17,9 +17,11 @@ from historical_replay import (
     PROTOCOL_VERSION, DailyReplay, HistoryView, ScheduledTargets, utc_timestamp, validate_delay,
 )
 from strategy_selector import FeedbackBook, RegimeSelector, SELECTOR_RULE, SelectorConfig, market_state
+from strategy_selector import FeedbackView
+from strategy_research import CandidateResearch, CandidateSpec, RESEARCH_RULE, ResearchConfig
 
 
-VERSION = "research-system-0.5.0"
+VERSION = "research-system-0.6.0"
 MIX_RULE = "fixed-strategy-budgets-v1"
 DEFAULT_STRATEGY_BUDGETS = MappingProxyType({"momentum": 0.5, "relative_reversion": 0.5})
 
@@ -47,6 +49,7 @@ class BacktestResult:
     role: str = "standalone"
     allocations: tuple[dict, ...] = ()
     selector_events: tuple[dict, ...] = ()
+    research_events: tuple[dict, ...] = ()
 
 
 TargetFunction = Callable[[str, HistoryView, Mapping], dict[str, float]]
@@ -332,6 +335,7 @@ class _PortfolioLedger:
     order_events: list[dict] = field(default_factory=list)
     allocations: list[dict] = field(default_factory=list)
     selector_events: list[dict] = field(default_factory=list)
+    research_events: list[dict] = field(default_factory=list)
     pending: ScheduledTargets | None = None
     turnover: float = 0.0
 
@@ -390,7 +394,8 @@ class _PortfolioLedger:
         metrics["total_fees"] = math.fsum(trade["fee"] for trade in self.trades)
         metrics["average_cash_weight"] = math.fsum(row["cash"] / row["equity"] for row in self.portfolio) / len(self.portfolio)
         return BacktestResult(self.name, tuple(self.predictions), tuple(self.trades), tuple(self.portfolio),
-                              metrics, tuple(events), self.role, tuple(self.allocations), tuple(self.selector_events))
+                              metrics, tuple(events), self.role, tuple(self.allocations), tuple(self.selector_events),
+                              tuple(self.research_events))
 
 
 def _allocate(ledger: _PortfolioLedger, history: HistoryView, components: dict[str, dict[str, float]],
@@ -416,17 +421,22 @@ def _allocate(ledger: _PortfolioLedger, history: HistoryView, components: dict[s
 
 def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
               budgets: Mapping[str, float] | None = None,
-              selector_config: SelectorConfig | None = None) -> list[BacktestResult]:
+              selector_config: SelectorConfig | None = None,
+              research_config: ResearchConfig | None = None,
+              target_functions: Mapping[str, TargetFunction] | None = None) -> list[BacktestResult]:
     cfg = _validate_config(config)
+    library = STRATEGIES if target_functions is None else target_functions
     names = tuple(candidates)
-    if not names or len(set(names)) != len(names) or any(name not in STRATEGIES for name in names):
+    if not names or len(set(names)) != len(names) or any(name not in library for name in names):
         raise ValueError("replay requires non-empty, unique, known strategies")
-    if budgets is not None and any(name in {"fixed_mix", "dynamic_mix"} for name in names):
-        raise ValueError("fixed_mix and dynamic_mix are reserved for portfolio accounts")
+    if budgets is not None and any(name in {"fixed_mix", "dynamic_mix", "adaptive_mix"} for name in names):
+        raise ValueError("fixed_mix, dynamic_mix and adaptive_mix are reserved for portfolio accounts")
     if selector_config is not None and budgets is None:
         raise ValueError("dynamic selection requires a fixed-budget benchmark")
+    if research_config is not None and selector_config is None:
+        raise ValueError("candidate research requires the mature-feedback selector")
     frozen_budgets = _validate_budgets(budgets, names) if budgets is not None else None
-    functions = {name: STRATEGIES[name] for name in names}
+    functions = {name: library[name] for name in names}
     lookback = cfg["lookback_days"]
     if len(panel.dates) < lookback + 1:
         raise ValueError("price history is too short for the configured lookback")
@@ -442,11 +452,19 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
     dynamic = _PortfolioLedger("dynamic_mix", "portfolio", cfg, panel.assets) if selector_config is not None else None
     selector = RegimeSelector(selector_config) if selector_config is not None else None
     feedback = FeedbackBook(selector_config.horizon_days, cfg["data_delay_seconds"], cfg["strategy_version"]) if selector else None
+    adaptive = _PortfolioLedger("adaptive_mix", "portfolio", cfg, panel.assets) if research_config is not None else None
+    research = CandidateResearch(research_config, selector_config.horizon_days, cfg["strategy_version"]) if adaptive else None
+    extra_feedback = FeedbackBook(selector_config.horizon_days, cfg["data_delay_seconds"], cfg["strategy_version"]) if adaptive else None
+    candidate_ledgers: dict[str, _PortfolioLedger] = {}
+    candidate_functions: dict[str, TargetFunction] = {}
     if dynamic is not None:
         actual.role = "benchmark"
     accounts = [*ledgers.values(), *([actual] if actual is not None else [])]
     if dynamic is not None:
         accounts.append(dynamic)
+    if adaptive is not None:
+        dynamic.role = "benchmark"
+        accounts.append(adaptive)
     for index, on in enumerate(panel.dates):
         clock = replay.available_at(on)
         if index < lookback or (cfg["start_at"] is not None and clock < cfg["start_at"]):
@@ -454,6 +472,19 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
         if cfg["end_at"] is not None and clock > cfg["end_at"]:
             break
         history = replay.advance_to(clock)
+        if research is not None:
+            new_versions, events = research.begin_tick(history)
+            adaptive.research_events.extend(events)
+            for version in new_versions:
+                candidate_cfg = {**cfg, "lookback_days": version.spec.lookback_days,
+                                 "strategy_version": version.version_id}
+                candidate_ledger = _PortfolioLedger(version.account, "candidate_shadow", candidate_cfg, panel.assets)
+                candidate_ledgers[version.account] = candidate_ledger
+                accounts.append(candidate_ledger)
+                parameters = MappingProxyType({**dict(strategy_config), "lookback_days": version.spec.lookback_days,
+                                               "strategy_version": version.version_id})
+                parent_fn = functions[version.spec.parent]
+                candidate_functions[version.account] = lambda on, view, _, fn=parent_fn, params=parameters: fn(on, view, params)
         before = {ledger.name: ledger.observe(history) for ledger in accounts}
         signals = {asset: history.price(on, asset) / history.price(history.dates[-lookback - 1], asset) - 1.0
                    for asset in history.assets}
@@ -462,11 +493,19 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
             after = {name: ledger.portfolio[-1]["equity"] for name, ledger in ledgers.items()}
             dynamic.selector_events.extend(feedback.advance(history, before, after))
             dynamic.selector_events.extend(selector.advance(history, feedback.view(clock)))
+        if research is not None:
+            after_candidates = {name: ledger.portfolio[-1]["equity"] for name, ledger in candidate_ledgers.items()}
+            adaptive.research_events.extend(extra_feedback.advance(history, before, after_candidates))
         component_targets = {}
         for name, target_fn in functions.items():
             targets = _validate_targets(target_fn(on, history, strategy_config), history.assets, cfg["max_weight"], name)
             component_targets[name] = targets
             ledgers[name].submit(history, targets, signals)
+        candidate_targets = {}
+        for name, target_fn in candidate_functions.items():
+            targets = _validate_targets(target_fn(on, history, strategy_config), history.assets, cfg["max_weight"], name)
+            candidate_targets[name] = targets
+            candidate_ledgers[name].submit(history, targets, signals)
         if actual is not None:
             _allocate(actual, history, component_targets, frozen_budgets, signals, MIX_RULE,
                       "frozen strategy budgets; unused strategy exposure remains cash")
@@ -475,6 +514,26 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
             _allocate(dynamic, history, component_targets, selected_budgets, signals, SELECTOR_RULE,
                       details["reason"], details)
             dynamic.selector_events.extend(feedback.register(history, names, state))
+        if research is not None:
+            mature = FeedbackView(clock, feedback.view(clock).samples + extra_feedback.view(clock).samples)
+            adaptive.research_events.extend(research.finish_tick(history, mature, details["selected_strategy"],
+                after_candidates, lambda view, spec: _evaluate_candidate(view, spec, cfg, research_config, functions[spec.parent])))
+            replacements = research.replacements(clock)
+            components = {**component_targets,
+                          **{version.account: candidate_targets[version.account] for version in replacements.values()}}
+            improved_budgets = {}
+            for parent, weight in selected_budgets.items():
+                destination = replacements[parent].account if parent in replacements else parent
+                improved_budgets[destination] = improved_budgets.get(destination, 0.0) + weight
+            selected_parent = details["selected_strategy"]
+            selected = replacements[selected_parent].account if selected_parent in replacements else selected_parent
+            improved_details = {**details, "selected_parent": selected_parent, "selected_strategy": selected,
+                                "candidate_versions": research.replacement_evidence(clock), "rule": RESEARCH_RULE,
+                                "reason": "confirmed_parent_replacement" if selected != selected_parent else "base_selector_policy"}
+            _allocate(adaptive, history, components, improved_budgets, signals, RESEARCH_RULE,
+                      improved_details["reason"], improved_details)
+            adaptive.research_events.extend(extra_feedback.register(history, candidate_ledgers, state,
+                {name: ledger.config["strategy_version"] for name, ledger in candidate_ledgers.items()}))
     if not accounts[0].portfolio:
         raise ValueError("no replay events in the requested interval after warmup")
     return [ledger.finish() for ledger in accounts]
@@ -495,6 +554,44 @@ def backtest_dynamic_mix(panel: PricePanel, config: dict) -> list[BacktestResult
     budgets = _validate_budgets(config.get("strategy_budgets", DEFAULT_STRATEGY_BUDGETS), STRATEGIES)
     selector = SelectorConfig.parse(config.get("selector", {}), STRATEGIES)
     return _simulate(panel, config, STRATEGIES, budgets, selector)
+
+
+def _evaluate_candidate(history: HistoryView, spec: CandidateSpec, config: dict,
+                        protocol: ResearchConfig, parent_fn: TargetFunction) -> dict:
+    """Evaluate two independent research accounts using released rows only."""
+    total = protocol.train_days + protocol.validation_days
+    start_index = len(history.dates) - total
+    if start_index < max(spec.lookback_days, config["lookback_days"]):
+        raise ValueError("insufficient released prices for candidate research and warmup")
+    validation_index = len(history.dates) - protocol.validation_days
+    panel = PricePanel(history.dates, history.assets,
+                       {on: dict(row) for on, row in history.prices.items()}, "visible-history-research", history.content_hash)
+    keys = ("initial_capital", "lookback_days", "max_weight", "transaction_cost_bps", "strategy_version")
+    parent_params = MappingProxyType({key: config[key] for key in keys})
+    candidate_params = MappingProxyType({**dict(parent_params), "lookback_days": spec.lookback_days})
+    functions = {"research_parent": lambda on, view, _: parent_fn(on, view, parent_params),
+                 "research_candidate": lambda on, view, _: parent_fn(on, view, candidate_params)}
+    evidence = {"data_cutoff": history.as_of.isoformat(), "history_hash": history.content_hash,
+                "research_only": True, "spec": asdict(spec)}
+    for name, first, last in (("train", start_index, validation_index - 1),
+                              ("validation", validation_index, len(history.dates) - 1)):
+        first_day, last_day = history.dates[first], history.dates[last]
+        local_config = {**config, "lookback_days": max(spec.lookback_days, config["lookback_days"]),
+                        "start_at": history.timing(first_day).available_at,
+                        "end_at": history.timing(last_day).available_at}
+        parent, candidate = _simulate(panel, local_config, functions, target_functions=functions)
+        evidence[name] = {"first_decision_date": first_day, "last_price_date": last_day,
+                          "start_at": local_config["start_at"].isoformat(),
+                          "end_at": local_config["end_at"].isoformat(),
+                          "parent": parent.metrics, "candidate": candidate.metrics}
+    return evidence
+
+
+def backtest_research_mix(panel: PricePanel, config: dict) -> list[BacktestResult]:
+    budgets = _validate_budgets(config.get("strategy_budgets", DEFAULT_STRATEGY_BUDGETS), STRATEGIES)
+    selector = SelectorConfig.parse(config.get("selector", {}), STRATEGIES)
+    research = ResearchConfig.parse(config.get("research", {}), selector.candidates)
+    return _simulate(panel, config, STRATEGIES, budgets, selector, research)
 
 
 def experiment_id(panel: PricePanel, config: dict, strategies: Iterable[str]) -> str:
@@ -553,6 +650,11 @@ def setup_research_db(path: str | Path) -> sqlite3.Connection:
         event_type TEXT NOT NULL, event_at TEXT NOT NULL, payload_json TEXT NOT NULL,
         PRIMARY KEY (experiment_id, strategy, sequence)
     );
+    CREATE TABLE IF NOT EXISTS research_events (
+        experiment_id TEXT NOT NULL, strategy TEXT NOT NULL, sequence INTEGER NOT NULL,
+        event_type TEXT NOT NULL, event_at TEXT NOT NULL, payload_json TEXT NOT NULL,
+        PRIMARY KEY (experiment_id, strategy, sequence)
+    );
     """)
     db.commit()
     return db
@@ -564,11 +666,11 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
     selected = list(results)
     if not selected or len({result.strategy for result in selected}) != len(selected):
         raise ValueError("experiment requires non-empty, unique strategy results")
-    if any(result.role not in {"standalone", "shadow", "portfolio", "benchmark"} for result in selected):
+    if any(result.role not in {"standalone", "shadow", "candidate_shadow", "portfolio", "benchmark"} for result in selected):
         raise ValueError("unknown account role")
     records: dict[str, list[tuple]] = {table: [] for table in (
         "predictions", "trades", "portfolio_daily", "metrics", "decision_audit", "order_events",
-        "account_roles", "allocation_decisions", "selector_events")}
+        "account_roles", "allocation_decisions", "selector_events", "research_events")}
     for result in selected:
         records["account_roles"].append((experiment, result.strategy, result.role))
         for prediction in result.predictions:
@@ -598,6 +700,10 @@ def save_experiment(db: sqlite3.Connection, experiment: str, panel: PricePanel, 
                 experiment, result.strategy, allocation["decision_date"], json.dumps(allocation, sort_keys=True)))
         for sequence, event in enumerate(result.selector_events):
             records["selector_events"].append((
+                experiment, result.strategy, sequence, event["event_type"], event["event_at"],
+                json.dumps(event["payload"], sort_keys=True)))
+        for sequence, event in enumerate(result.research_events):
+            records["research_events"].append((
                 experiment, result.strategy, sequence, event["event_type"], event["event_at"],
                 json.dumps(event["payload"], sort_keys=True)))
     metadata = (panel.source, panel.content_hash, json.dumps(config, sort_keys=True), VERSION, "completed")
@@ -664,6 +770,25 @@ def run_dynamic_mix_experiment(data_path: str | Path, config: dict,
     frozen_config = {**config, "strategy_budgets": budgets, "portfolio_rule": MIX_RULE,
                      "shadow_strategies": list(STRATEGIES), "selector": asdict(selector), "selector_rule": SELECTOR_RULE}
     results = backtest_dynamic_mix(panel, frozen_config)
+    identifier = experiment_id(panel, frozen_config, [result.strategy for result in results])
+    db = setup_research_db(database)
+    try:
+        save_experiment(db, identifier, panel, frozen_config, results)
+    finally:
+        db.close()
+    return identifier, results
+
+
+def run_research_mix_experiment(data_path: str | Path, config: dict,
+                                database: str | Path) -> tuple[str, list[BacktestResult]]:
+    panel = load_price_csv(data_path)
+    budgets = _validate_budgets(config.get("strategy_budgets", DEFAULT_STRATEGY_BUDGETS), STRATEGIES)
+    selector = SelectorConfig.parse(config.get("selector", {}), STRATEGIES)
+    research = ResearchConfig.parse(config.get("research", {}), selector.candidates)
+    frozen_config = {**config, "strategy_budgets": budgets, "portfolio_rule": MIX_RULE,
+                     "shadow_strategies": list(STRATEGIES), "selector": asdict(selector), "selector_rule": SELECTOR_RULE,
+                     "research": asdict(research), "research_rule": RESEARCH_RULE}
+    results = backtest_research_mix(panel, frozen_config)
     identifier = experiment_id(panel, frozen_config, [result.strategy for result in results])
     db = setup_research_db(database)
     try:
