@@ -1,6 +1,10 @@
-# 跨交易所现货价差监控
+# quantmp：策略组合研究与模拟交易
 
-策略研究系统的设计与实施交接见 [quantmp：策略研究、组合运行与持续改进设计](docs/research-system-design.md)。该文档记录后续系统规划，下面描述当前已实现的价差监控工具。
+项目核心目标是检验依据当时信息挑选策略组合、持续积累扣除成本后收益的能力。后续开发以 [历史时钟驱动的策略组合研究与模拟实盘](docs/strategy-selection-replay.md) 为主线：受限历史数据 → 研究与内部验证 → 冻结版本 → 向前模拟 → 成熟结果复盘 → 调整组合或补充策略库。
+
+当前已实现价差监控、BTC/SOL 数据下载和静态策略回测。历史时钟隔离、组合选择器与研究改进循环尚待实现；此前回测发现的负现金等账务问题列于 [实现记录](docs/research-system-implementation.md)，修复后再重新评估结果。总体背景见 [研究系统设计](docs/research-system-design.md)。
+
+## 跨交易所现货价差监控
 
 这是一个只读的研究工具，通过公开 REST 订单簿比较 Binance、Kraken 和 Coinbase Exchange 的现货价格。无需 API 密钥，也不会下单。适用于 Python 3.10 及以上，不需要安装第三方库。
 
@@ -31,7 +35,7 @@ python arbitrage.py
 
 ## 研究闭环（阶段 1）
 
-按照 [研究系统阶段 1 实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的研究入口。它使用 `data/demo_prices.csv` 的矩形价格数据，比较简单动量、相对偏离回归、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。
+按照 [研究系统阶段 1 实现记录](docs/research-system-implementation.md)，项目现在包含一个本地、离线、可复现的静态研究入口。默认使用 BTC/SOL 历史数据，也可指定 `--data data/demo_prices.csv` 使用演示面板；比较简单动量、跌幅回归候选（`relative_reversion`）、等权和现金基准，按 `t` 生成信号、在 `t+1` 执行，并扣除换手交易成本。当前回归候选尚未剔除市场影响。
 
 ```powershell
 python research.py
