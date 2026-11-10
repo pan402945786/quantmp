@@ -21,7 +21,7 @@ from strategy_selector import FeedbackView
 from strategy_research import CandidateResearch, CandidateSpec, RESEARCH_RULE, ResearchConfig
 
 
-VERSION = "research-system-0.6.0"
+VERSION = "research-system-0.7.0"
 MIX_RULE = "fixed-strategy-budgets-v1"
 DEFAULT_STRATEGY_BUDGETS = MappingProxyType({"momentum": 0.5, "relative_reversion": 0.5})
 
@@ -423,7 +423,10 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
               budgets: Mapping[str, float] | None = None,
               selector_config: SelectorConfig | None = None,
               research_config: ResearchConfig | None = None,
-              target_functions: Mapping[str, TargetFunction] | None = None) -> list[BacktestResult]:
+              target_functions: Mapping[str, TargetFunction] | None = None,
+              resume_state: dict | None = None,
+              checkpoint_callback: Callable[[dict], None] | None = None,
+              stop_at: datetime | None = None) -> list[BacktestResult]:
     cfg = _validate_config(config)
     library = STRATEGIES if target_functions is None else target_functions
     names = tuple(candidates)
@@ -465,11 +468,46 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
     if adaptive is not None:
         dynamic.role = "benchmark"
         accounts.append(adaptive)
+    last_date = None
+    if resume_state is not None:
+        accounts = resume_state["accounts"]
+        by_name = {ledger.name: ledger for ledger in accounts}
+        ledgers = {name: by_name[name] for name in names}
+        actual = by_name.get("fixed_mix")
+        dynamic = by_name.get("dynamic_mix")
+        adaptive = by_name.get("adaptive_mix")
+        candidate_ledgers = {name: ledger for name, ledger in by_name.items() if ledger.role == "candidate_shadow"}
+        selector = resume_state["selector"]
+        feedback = resume_state["feedback"]
+        research = resume_state["research"]
+        extra_feedback = resume_state["extra_feedback"]
+        last_date = resume_state["last_date"]
+        restored_history = replay.advance_to(resume_state["as_of"])
+        if restored_history.content_hash != resume_state["history_hash"] or restored_history.dates[-1] != last_date:
+            raise ValueError("checkpoint visible history does not match the supplied prices")
+        if research is not None:
+            for state in research._states.values():
+                version = state.version
+                if version.account not in candidate_ledgers:
+                    continue
+                parameters = MappingProxyType({**dict(strategy_config), "lookback_days": version.spec.lookback_days,
+                                               "strategy_version": version.version_id})
+                parent_fn = functions[version.spec.parent]
+                candidate_functions[version.account] = lambda on, view, _, fn=parent_fn, params=parameters: fn(on, view, params)
+        if checkpoint_callback is not None:
+            checkpoint_callback(resume_state)
+    stop_at = utc_timestamp(stop_at) if stop_at is not None else None
+    if stop_at is not None and resume_state is not None and stop_at < utc_timestamp(resume_state["as_of"]):
+        raise ValueError("checkpoint stop time cannot move backwards")
     for index, on in enumerate(panel.dates):
+        if last_date is not None and on <= last_date:
+            continue
         clock = replay.available_at(on)
         if index < lookback or (cfg["start_at"] is not None and clock < cfg["start_at"]):
             continue
         if cfg["end_at"] is not None and clock > cfg["end_at"]:
+            break
+        if stop_at is not None and clock > stop_at:
             break
         history = replay.advance_to(clock)
         if research is not None:
@@ -534,6 +572,10 @@ def _simulate(panel: PricePanel, config: dict, candidates: Iterable[str],
                       improved_details["reason"], improved_details)
             adaptive.research_events.extend(extra_feedback.register(history, candidate_ledgers, state,
                 {name: ledger.config["strategy_version"] for name, ledger in candidate_ledgers.items()}))
+        if checkpoint_callback is not None:
+            checkpoint_callback({"accounts": accounts, "selector": selector, "feedback": feedback,
+                "research": research, "extra_feedback": extra_feedback, "last_date": on,
+                "as_of": clock, "history_hash": history.content_hash})
     if not accounts[0].portfolio:
         raise ValueError("no replay events in the requested interval after warmup")
     return [ledger.finish() for ledger in accounts]
@@ -595,7 +637,9 @@ def backtest_research_mix(panel: PricePanel, config: dict) -> list[BacktestResul
 
 
 def experiment_id(panel: PricePanel, config: dict, strategies: Iterable[str]) -> str:
-    payload = {"version": VERSION, "data_hash": panel.content_hash, "config": config, "strategies": list(strategies)}
+    from replay_artifacts import code_identity
+    payload = {"version": VERSION, "code_hash": code_identity()["hash"], "data_hash": panel.content_hash,
+               "config": config, "strategies": list(strategies)}
     return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
 
 
