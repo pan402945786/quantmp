@@ -1,0 +1,2043 @@
+{
+  "schema": "quantmp-validation-evidence-v1",
+  "date": "2026-11-12",
+  "protocol_hash": "fb722b0efbd30d7e3faffff39fbda4831bd5e875c4e64b4b680a41747e599f67",
+  "protocol": {
+    "cases": [
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 5,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 10
+        },
+        "mode": "portfolio",
+        "name": "momentum_5d_50_cost10"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 10
+        },
+        "mode": "portfolio",
+        "name": "momentum_20d_50_cost10"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "equal_weight": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 10
+        },
+        "mode": "portfolio",
+        "name": "equal_weight_50_cost10"
+      },
+      {
+        "account": "adaptive_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 10
+        },
+        "mode": "research",
+        "name": "adaptive_20d_50_cost10"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 5,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 25
+        },
+        "mode": "portfolio",
+        "name": "momentum_5d_50_cost25"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 25
+        },
+        "mode": "portfolio",
+        "name": "momentum_20d_50_cost25"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "equal_weight": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 25
+        },
+        "mode": "portfolio",
+        "name": "equal_weight_50_cost25"
+      },
+      {
+        "account": "adaptive_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 25
+        },
+        "mode": "research",
+        "name": "adaptive_20d_50_cost25"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 5,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 50
+        },
+        "mode": "portfolio",
+        "name": "momentum_5d_50_cost50"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 50
+        },
+        "mode": "portfolio",
+        "name": "momentum_20d_50_cost50"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "equal_weight": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 50
+        },
+        "mode": "portfolio",
+        "name": "equal_weight_50_cost50"
+      },
+      {
+        "account": "adaptive_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 0.5,
+            "momentum": 0.5
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 50
+        },
+        "mode": "research",
+        "name": "adaptive_20d_50_cost50"
+      },
+      {
+        "account": "fixed_mix",
+        "config": {
+          "data": "data/btc_sol_daily.csv",
+          "data_delay_seconds": 0,
+          "database": "research_paper_v2.sqlite3",
+          "end_at": "2026-11-12T00:00:00Z",
+          "initial_capital": 100000,
+          "lookback_days": 20,
+          "max_weight": 0.6,
+          "research": {
+            "activation_delay_days": 1,
+            "attempts_per_cycle": 1,
+            "candidate_plan": [
+              {
+                "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+                "lookback_days": 30,
+                "name": "momentum_slow_v2",
+                "parent": "momentum"
+              }
+            ],
+            "confirmation_days": 90,
+            "confirmation_timeout_days": 150,
+            "max_attempts": 1,
+            "max_drawdown": 0.35,
+            "min_confirmation_samples": 12,
+            "min_mature_samples": 12,
+            "min_parent_excess": 0.0,
+            "min_return": 0.0,
+            "research_every_days": 30,
+            "shadow_delay_days": 1,
+            "train_days": 180,
+            "trigger_cash_days": 45,
+            "uncertainty_penalty": 1.0,
+            "validation_days": 60
+          },
+          "selector": {
+            "activation_delay_days": 1,
+            "candidates": [
+              "momentum",
+              "equal_weight"
+            ],
+            "horizon_days": 5,
+            "min_active_validation_samples": 3,
+            "min_state_samples": 6,
+            "min_train_samples": 12,
+            "min_validation_samples": 6,
+            "research_every_days": 30,
+            "strategy_budget": 0.5,
+            "train_days": 180,
+            "uncertainty_penalty": 0.5,
+            "validation_days": 60
+          },
+          "start_at": "2021-07-01T00:00:00Z",
+          "strategy_budgets": {
+            "cash": 1.0
+          },
+          "strategy_version": "paper-v2-momentum-cash-20d",
+          "transaction_cost_bps": 10
+        },
+        "mode": "portfolio",
+        "name": "cash_cost10"
+      }
+    ],
+    "created_at": "2026-11-12T07:24:20.010482+00:00",
+    "data": {
+      "assets": [
+        "BTCUSDT",
+        "SOLUSDT"
+      ],
+      "days": 2141,
+      "first_date": "2021-01-01",
+      "hash": "4f439889f8e73b607118bc5a3490ce11319eb51ca4171829d662e28f8cfb6e55",
+      "last_date": "2026-11-11"
+    },
+    "interpretation": "Post-hoc historical diagnostic. Equal strategy budgets do not imply equal realized volatility or exposure. No parameter promotion or independent profitability confirmation.",
+    "raw_data_hash": "ab87a3e2e56e81617d3f4b4b1e77bf5151ed3cb78802230c03550746c270beb4",
+    "schema": "quantmp-paper-validation-v1",
+    "validator_sha256": "f4fe719f37675cee41a46259163dd6a1af4eb985afc5c1611fd1e797e1a56ccb"
+  },
+  "test_count": 103,
+  "cases": [
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "0eeb81a4cac94fe6a5b7d32274707bf3bccc35fbc9eefdd78576d44438b2d27f",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 65,
+      "max_underwater_days": 731,
+      "metrics": {
+        "annualized_return": 0.18139978241766497,
+        "average_cash_weight": 0.7394696583375828,
+        "ending_equity": 244771.7897128728,
+        "max_drawdown": -0.47675657062683585,
+        "rebalances": 1392.0,
+        "total_fees": 43939.22961035658,
+        "total_return": 1.4477178971287281,
+        "turnover": 239.1983646258679,
+        "volatility": 0.23597588567074973
+      },
+      "name": "momentum_5d_50_cost10",
+      "run_id": "a74584ac902d047520b98952876626eb8483b5b3c0ca26c54b7dbd8e91a91691",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 89494.15795970795,
+          "equity_points": 549,
+          "max_drawdown": -0.47675657062683585,
+          "net_return": -0.10505842040292046,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 237499.9392386083,
+          "equity_points": 731,
+          "max_drawdown": -0.1179467922973163,
+          "net_return": 1.6538038309219636,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 89494.15795970795
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 244771.7897128728,
+          "equity_points": 681,
+          "max_drawdown": -0.19546496820857773,
+          "net_return": 0.0306183256196908,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 237499.9392386083
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 10,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "22d6c7760d4cc1b28d42a51f159d4215ef749b38a35e4a870a686aa1728b8e06",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 12,
+      "max_underwater_days": 738,
+      "metrics": {
+        "annualized_return": 0.22185577047427274,
+        "average_cash_weight": 0.7420193778684344,
+        "ending_equity": 293281.84512697224,
+        "max_drawdown": -0.43264822479693377,
+        "rebalances": 1279.0,
+        "total_fees": 26690.090871513516,
+        "total_return": 1.9328184512697226,
+        "turnover": 127.87579406294019,
+        "volatility": 0.23657108233412197
+      },
+      "name": "momentum_20d_50_cost10",
+      "run_id": "19005ad2429c8e49c3abc92773e46a9786d927d0ab1afd5cbc06f454145844a4",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 107788.78932343893,
+          "equity_points": 549,
+          "max_drawdown": -0.43264822479693377,
+          "net_return": 0.07788789323438938,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 279633.70605428226,
+          "equity_points": 731,
+          "max_drawdown": -0.18323324501201388,
+          "net_return": 1.5942744863307898,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 107788.78932343893
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 293281.84512697224,
+          "equity_points": 681,
+          "max_drawdown": -0.18912313373056966,
+          "net_return": 0.04880720305598851,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 279633.70605428226
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 10,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "473db38dcf5300dfab31dae9bc211e3087e8d75a15be347719c3ae6dc0fea6aa",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 67,
+      "max_underwater_days": 841,
+      "metrics": {
+        "annualized_return": 0.18018300888020988,
+        "average_cash_weight": 0.5002549719530852,
+        "ending_equity": 243421.08580936166,
+        "max_drawdown": -0.6359718135808207,
+        "rebalances": 1960.0,
+        "total_fees": 3119.6735656844626,
+        "total_return": 1.4342108580936164,
+        "turnover": 16.713724421387358,
+        "volatility": 0.34240674184843695
+      },
+      "name": "equal_weight_50_cost10",
+      "run_id": "e7adee8b6d9b02c6c7e0dcb8703aa2fde20e75c2e9014af13145801051df6fe9",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 76649.39386694817,
+          "equity_points": 549,
+          "max_drawdown": -0.6359718135808207,
+          "net_return": -0.23350606133051832,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 287794.5677247249,
+          "equity_points": 731,
+          "max_drawdown": -0.16411191864408448,
+          "net_return": 2.754688109136166,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 76649.39386694817
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 243421.08580936166,
+          "equity_points": 681,
+          "max_drawdown": -0.3785773149954731,
+          "net_return": -0.1541845708422349,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 287794.5677247249
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 10,
+      "research_attempts": []
+    },
+    {
+      "account": "adaptive_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 7844,
+        "feedback_matured": 7820,
+        "passed": true,
+        "pending_feedback": 24,
+        "selector_versions": 61
+      },
+      "checkpoint_hash": "30e5919714dbb641f18721432f96c30eb395218376c5458a914d8d98a7911e45",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 954,
+      "max_underwater_days": 1805,
+      "metrics": {
+        "annualized_return": -0.04427487179862177,
+        "average_cash_weight": 0.9598674145843957,
+        "ending_equity": 78413.51634834174,
+        "max_drawdown": -0.2379438213669104,
+        "rebalances": 189.0,
+        "total_fees": 2002.0381478947538,
+        "total_return": -0.21586483651658261,
+        "turnover": 21.547536547463036,
+        "volatility": 0.11011659977791453
+      },
+      "name": "adaptive_20d_50_cost10",
+      "run_id": "82d2f00a8168f5d2894df5a5e7b12ea4a48744b2009d05d17d3e4bc0ec007a61",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 91149.38061328912,
+          "equity_points": 549,
+          "max_drawdown": -0.1356342861424934,
+          "net_return": -0.08850619386710878,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 93937.70712819259,
+          "equity_points": 731,
+          "max_drawdown": -0.12341607021193157,
+          "net_return": 0.03059073463958284,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 91149.38061328912
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 78413.51634834174,
+          "equity_points": 681,
+          "max_drawdown": -0.1701492847958912,
+          "net_return": -0.16526048223282352,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 93937.70712819259
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 10,
+      "research_attempts": [
+        {
+          "at": "2021-09-29T00:00:00+00:00",
+          "passed": false,
+          "reason": "internal_validation_failed",
+          "spec": {
+            "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+            "lookback_days": 30,
+            "name": "momentum_slow_v2",
+            "parent": "momentum"
+          }
+        }
+      ]
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "8a233288090b37dbbf4780b8c340d8a1b7530fb22536105299edc83fb820f319",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 68,
+      "max_underwater_days": 773,
+      "metrics": {
+        "annualized_return": 0.10502909378178837,
+        "average_cash_weight": 0.7394696583375828,
+        "ending_equity": 170966.45022607368,
+        "max_drawdown": -0.5175462425355082,
+        "rebalances": 1392.0,
+        "total_fees": 90073.11094066169,
+        "total_return": 0.7096645022607369,
+        "turnover": 239.13649243717242,
+        "volatility": 0.23599951976259106
+      },
+      "name": "momentum_5d_50_cost25",
+      "run_id": "1b9f191a97a52c44c66143f4ca97f53481acfa747ce7272d43ea752a4d19bb97",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 80532.99170693339,
+          "equity_points": 549,
+          "max_drawdown": -0.5168692242291878,
+          "net_return": -0.19467008293066612,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 186580.14859044785,
+          "equity_points": 731,
+          "max_drawdown": -0.1350769499907113,
+          "net_return": 1.3168163088915081,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 80532.99170693339
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 170966.45022607368,
+          "equity_points": 681,
+          "max_drawdown": -0.2570397611585,
+          "net_return": -0.08368359915205648,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 186580.14859044785
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 25,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "5a1d93f085c2c7b8570b74d082b379530ffcc37bac856251785a86046b99aa2d",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 14,
+      "max_underwater_days": 773,
+      "metrics": {
+        "annualized_return": 0.17897433942878593,
+        "average_cash_weight": 0.7420193778684344,
+        "ending_equity": 242085.3892315682,
+        "max_drawdown": -0.4571164883629921,
+        "rebalances": 1279.0,
+        "total_fees": 59743.7793796082,
+        "total_return": 1.420853892315682,
+        "turnover": 127.84791452995246,
+        "volatility": 0.23669467290746035
+      },
+      "name": "momentum_20d_50_cost25",
+      "run_id": "154c9ef2b74d879aac09c4f92d422b2dc0b94c7beccf1e1b9bdb477982670448",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 101680.85280416244,
+          "equity_points": 549,
+          "max_drawdown": -0.4571164883629921,
+          "net_return": 0.01680852804162436,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 246759.4004904792,
+          "equity_points": 731,
+          "max_drawdown": -0.19162920021777718,
+          "net_return": 1.426803018319864,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 101680.85280416244
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 242085.3892315682,
+          "equity_points": 681,
+          "max_drawdown": -0.21859470438207595,
+          "net_return": -0.018941573247546195,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 246759.4004904792
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 25,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "7c300fbee4bf17ff9d29887dbcea2df2896ccba6f92250ead8940a04e1ffc847",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 67,
+      "max_underwater_days": 841,
+      "metrics": {
+        "annualized_return": 0.17468592300691954,
+        "average_cash_weight": 0.5002549719530852,
+        "ending_equity": 237394.30506539776,
+        "max_drawdown": -0.6381810586182546,
+        "rebalances": 1960.0,
+        "total_fees": 7685.338324133373,
+        "total_return": 1.3739430506539776,
+        "turnover": 16.713103763666595,
+        "volatility": 0.3423752406221717
+      },
+      "name": "equal_weight_50_cost25",
+      "run_id": "c781b220746da909ad0e92971a078e9cac2c0e29aa10486e143900a225a3604c",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 75916.54390740955,
+          "equity_points": 549,
+          "max_drawdown": -0.6381810586182546,
+          "net_return": -0.2408345609259045,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 282497.5242215782,
+          "equity_points": 731,
+          "max_drawdown": -0.1645833912628586,
+          "net_return": 2.7211589158500415,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 75916.54390740955
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 237394.30506539776,
+          "equity_points": 681,
+          "max_drawdown": -0.3799622618154447,
+          "net_return": -0.15965881216291133,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 282497.5242215782
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 25,
+      "research_attempts": []
+    },
+    {
+      "account": "adaptive_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 7844,
+        "feedback_matured": 7820,
+        "passed": true,
+        "pending_feedback": 24,
+        "selector_versions": 61
+      },
+      "checkpoint_hash": "235031bc4c5a0ff4b4aee843405bbdad7cbf8d4d9e34c87216e94a86ad53fffc",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 943,
+      "max_underwater_days": 955,
+      "metrics": {
+        "annualized_return": -0.030594953528181423,
+        "average_cash_weight": 0.9667516573176951,
+        "ending_equity": 84632.11258876054,
+        "max_drawdown": -0.23089234765417677,
+        "rebalances": 153.0,
+        "total_fees": 4617.7939987288055,
+        "total_return": -0.15367887411239456,
+        "turnover": 18.922295399377493,
+        "volatility": 0.10663537639407401
+      },
+      "name": "adaptive_20d_50_cost25",
+      "run_id": "bbd4feaef08b1c8ca3a518257fb457251dd6e92de521a279ddd5239888440a88",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 90878.97446522821,
+          "equity_points": 549,
+          "max_drawdown": -0.13580340957572712,
+          "net_return": -0.09121025534771787,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 98128.90326437348,
+          "equity_points": 731,
+          "max_drawdown": -0.12872387426083165,
+          "net_return": 0.07977564493665379,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 90878.97446522821
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 84632.11258876054,
+          "equity_points": 681,
+          "max_drawdown": -0.1568745757152451,
+          "net_return": -0.1375414401529652,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 98128.90326437348
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 25,
+      "research_attempts": [
+        {
+          "at": "2021-09-29T00:00:00+00:00",
+          "passed": false,
+          "reason": "internal_validation_failed",
+          "spec": {
+            "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+            "lookback_days": 30,
+            "name": "momentum_slow_v2",
+            "parent": "momentum"
+          }
+        }
+      ]
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "54349e2074ec4eea0eccbd4634ba7437b21337918355cf6243ae5e6b857c95e2",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 413,
+      "max_underwater_days": 1890,
+      "metrics": {
+        "annualized_return": -0.011443351675866964,
+        "average_cash_weight": 0.7394696583375828,
+        "ending_equity": 94006.75646676199,
+        "max_drawdown": -0.580394069594381,
+        "rebalances": 1392.0,
+        "total_fees": 132469.11667968854,
+        "total_return": -0.05993243533238013,
+        "turnover": 239.03408988408432,
+        "volatility": 0.2362470638274489
+      },
+      "name": "momentum_5d_50_cost50",
+      "run_id": "3da4acd8927a0d9a8449a36df2600bb8c960ca69dc165d3342916b5b8f3108d9",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 67547.10415702159,
+          "equity_points": 549,
+          "max_drawdown": -0.5781328916891988,
+          "net_return": -0.32452895842978413,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 124795.69338110607,
+          "equity_points": 731,
+          "max_drawdown": -0.17697566965533496,
+          "net_return": 0.8475358039184488,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 67547.10415702159
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 94006.75646676199,
+          "equity_points": 681,
+          "max_drawdown": -0.3493670199622493,
+          "net_return": -0.24671473894791862,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 124795.69338110607
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 50,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "fa881554089ece016f05c5027ab45171e4c6ebffd2470ee96478e4c740528b16",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 67,
+      "max_underwater_days": 955,
+      "metrics": {
+        "annualized_return": 0.1108221816087609,
+        "average_cash_weight": 0.7420193778684344,
+        "ending_equity": 175834.8460680937,
+        "max_drawdown": -0.4978537763486329,
+        "rebalances": 1279.0,
+        "total_fees": 100028.2505679806,
+        "total_return": 0.758348460680937,
+        "turnover": 127.80192352094691,
+        "volatility": 0.23701543912694759
+      },
+      "name": "momentum_20d_50_cost50",
+      "run_id": "9483f7bd60c7d48399bbaf704b8d7203e9b2d7dcd716e99d3e6a2b9ec1660419",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 92260.21242075844,
+          "equity_points": 549,
+          "max_drawdown": -0.4958011205217867,
+          "net_return": -0.07739787579241553,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 200329.51835316775,
+          "equity_points": 731,
+          "max_drawdown": -0.20939664186443696,
+          "net_return": 1.1713533179346314,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 92260.21242075844
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 175834.8460680937,
+          "equity_points": 681,
+          "max_drawdown": -0.2716027813065528,
+          "net_return": -0.12227190723781178,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 200329.51835316775
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 50,
+      "research_attempts": []
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "57dcef4cb140b6adcda363754e9344f8fe099612378265975a5d643854a2c285",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 68,
+      "max_underwater_days": 841,
+      "metrics": {
+        "annualized_return": 0.1655812995128425,
+        "average_cash_weight": 0.5002549719530852,
+        "ending_equity": 227679.7946463558,
+        "max_drawdown": -0.6418327541249471,
+        "rebalances": 1960.0,
+        "total_fees": 15000.320527073167,
+        "total_return": 1.276797946463558,
+        "turnover": 16.712091453935933,
+        "volatility": 0.3423230490163251
+      },
+      "name": "equal_weight_50_cost50",
+      "run_id": "a6f69aa33dbab2ce321a8b46c217c24fb363358ca7c38215d9565a3329bc7b8d",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 74710.83195502758,
+          "equity_points": 549,
+          "max_drawdown": -0.6418327541249471,
+          "net_return": -0.2528916804497242,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 273885.1398816794,
+          "equity_points": 731,
+          "max_drawdown": -0.165368216854051,
+          "net_return": 2.6659361529603287,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 74710.83195502758
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 227679.7946463558,
+          "equity_points": 681,
+          "max_drawdown": -0.3822629567074797,
+          "net_return": -0.16870336687592713,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 273885.1398816794
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 50,
+      "research_attempts": []
+    },
+    {
+      "account": "adaptive_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 7844,
+        "feedback_matured": 7820,
+        "passed": true,
+        "pending_feedback": 24,
+        "selector_versions": 61
+      },
+      "checkpoint_hash": "ada3f20985ade5cdf3d20aa138d2a10234e33afff14b891c0916360cfce12691",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 619,
+      "max_underwater_days": 955,
+      "metrics": {
+        "annualized_return": -0.023307707930582677,
+        "average_cash_weight": 0.9755226925038246,
+        "ending_equity": 88105.00416355077,
+        "max_drawdown": -0.24494198088319008,
+        "rebalances": 109.0,
+        "total_fees": 7329.798028009703,
+        "total_return": -0.11894995836449229,
+        "turnover": 13.916083536015,
+        "volatility": 0.09490338186104272
+      },
+      "name": "adaptive_20d_50_cost50",
+      "run_id": "b2300acc1fb4f8e452ae227ff498930e449d1841a44973ec255606de54036d0f",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 100000.0,
+          "equity_points": 549,
+          "max_drawdown": 0.0,
+          "net_return": 0.0,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 102491.12743794464,
+          "equity_points": 731,
+          "max_drawdown": -0.13749863997995249,
+          "net_return": 0.024911274379446402,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 88105.00416355077,
+          "equity_points": 681,
+          "max_drawdown": -0.15748076075382078,
+          "net_return": -0.14036457236851307,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 102491.12743794464
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 50,
+      "research_attempts": [
+        {
+          "at": "2021-09-29T00:00:00+00:00",
+          "passed": false,
+          "reason": "internal_validation_failed",
+          "spec": {
+            "hypothesis": "A 30 day trend window may reduce turnover and drawdown while retaining the momentum signal.",
+            "lookback_days": 30,
+            "name": "momentum_slow_v2",
+            "parent": "momentum"
+          }
+        }
+      ]
+    },
+    {
+      "account": "fixed_mix",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "checkpoint_hash": "eb789eee669dd4867181a6c8866ec9ec5b5776771fd31d1d46211f18e2f2695f",
+      "end_at": "2026-11-12T00:00:00+00:00",
+      "max_days_below_initial_capital": 0,
+      "max_underwater_days": 0,
+      "metrics": {
+        "annualized_return": 0.0,
+        "average_cash_weight": 1.0,
+        "ending_equity": 100000.0,
+        "max_drawdown": 0.0,
+        "rebalances": 0.0,
+        "total_fees": 0.0,
+        "total_return": 0.0,
+        "turnover": 0.0,
+        "volatility": 0.0
+      },
+      "name": "cash_cost10",
+      "run_id": "1d8cf5bc2da27c175bb79a92b73cd94fb86bac3f51ce2ed6bc90f554aab4456c",
+      "segments": [
+        {
+          "end_at_exclusive": "2023-01-01T00:00:00Z",
+          "ending_equity": 100000.0,
+          "equity_points": 549,
+          "max_drawdown": 0.0,
+          "net_return": 0.0,
+          "start_at": "2021-07-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2025-01-01T00:00:00Z",
+          "ending_equity": 100000.0,
+          "equity_points": 731,
+          "max_drawdown": 0.0,
+          "net_return": 0.0,
+          "start_at": "2023-01-01T00:00:00Z",
+          "starting_equity": 100000.0
+        },
+        {
+          "end_at_exclusive": "2026-11-12T00:00:00.000001+00:00",
+          "ending_equity": 100000.0,
+          "equity_points": 681,
+          "max_drawdown": 0.0,
+          "net_return": 0.0,
+          "start_at": "2025-01-01T00:00:00Z",
+          "starting_equity": 100000.0
+        }
+      ],
+      "start_at": "2021-07-01T00:00:00+00:00",
+      "transaction_cost_bps": 10,
+      "research_attempts": []
+    }
+  ],
+  "continuation_checks": [
+    {
+      "checkpoint": "runs/paper-v2/portfolio-checkpoint-20261112.json",
+      "checkpoint_hash": "ba3ef30646c705841275055cab4143a1384da241ec6ae24606a1e232e4fe0170",
+      "historical_price_revision_rejected": true,
+      "no_event_checkpoint_and_results_identical": true
+    },
+    {
+      "checkpoint": "runs/paper-v2/checkpoint-20261112.json",
+      "checkpoint_hash": "8831e1511528d9183ed099c7e6d2bd876d9f962ded831d85c36f6a6540033423",
+      "historical_price_revision_rejected": true,
+      "no_event_checkpoint_and_results_identical": true
+    },
+    {
+      "checkpoint": "runs/phase-f-20261110T063328612933Z/checkpoint-20261112.json",
+      "checkpoint_hash": "8871ce5a23f91504dee1e7dd10e566c98d04d83614ec474e7b4aeedb3bfb1217",
+      "historical_price_revision_rejected": true,
+      "no_event_checkpoint_and_results_identical": true
+    }
+  ],
+  "frozen_continuations": [
+    {
+      "report": "runs/paper-v2/portfolio-reports/report-ba3ef30646c70584.json",
+      "run_id": "1f936047dd804c4559a6fbd3bf113e0f570010fbbb4b5757a0e95810da916311",
+      "checkpoint_hash": "ba3ef30646c705841275055cab4143a1384da241ec6ae24606a1e232e4fe0170",
+      "as_of": "2026-11-12T00:00:00+00:00",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 0,
+        "feedback_matured": 0,
+        "passed": true,
+        "pending_feedback": 0,
+        "selector_versions": 0
+      },
+      "account": {
+        "account": "fixed_mix",
+        "end_at": "2026-11-12T00:00:00+00:00",
+        "equity_points": 2121,
+        "event_counts": {},
+        "max_days_below_initial_capital": 1,
+        "max_ledger_residual": 5.005858838558197e-09,
+        "max_underwater_days": 738,
+        "metrics": {
+          "annualized_return": 0.3754394175989837,
+          "average_cash_weight": 0.7355492692126355,
+          "ending_equity": 636939.7886893508,
+          "max_drawdown": -0.4326482247969343,
+          "rebalances": 1417.0,
+          "total_fees": 60108.35419690337,
+          "total_return": 5.369397886893508,
+          "turnover": 138.58001695140686,
+          "volatility": 0.2688822055606892
+        },
+        "minimum_cash": 49975.01249375312,
+        "pending_orders": 1,
+        "role": "portfolio",
+        "selection_switches": 0,
+        "start_at": "2021-01-22T00:00:00+00:00"
+      },
+      "confirmation": {
+        "accounts": [
+          {
+            "account": "momentum",
+            "ending_equity": 2703848.7752364296,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 2703848.7752364296
+          },
+          {
+            "account": "relative_reversion",
+            "ending_equity": 34916.73451869968,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0006820326027507928,
+            "starting_equity": 34892.936398470214
+          },
+          {
+            "account": "equal_weight",
+            "ending_equity": 1172769.025684422,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.001062879227996083,
+            "starting_equity": 1171523.8373326191
+          },
+          {
+            "account": "cash",
+            "ending_equity": 100000.0,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 100000.0
+          },
+          {
+            "account": "fixed_mix",
+            "ending_equity": 636939.7886893508,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 636939.7886893508
+          }
+        ],
+        "appended_rows_processed": 1,
+        "eligible_post_freeze_rows": 1,
+        "first_eligible_at": "2026-11-12T00:00:00+00:00",
+        "frozen_at": "2026-11-11T12:36:35.749432+00:00",
+        "independent_profitability_confirmed": false,
+        "limitation": "CSV availability is a protocol assumption; publication, collection and revision vintages are unknown. Historical rows do not become independent confirmation by resuming.",
+        "status": "post_freeze_rows_available_under_protocol"
+      }
+    },
+    {
+      "report": "runs/paper-v2/reports/report-8831e1511528d918.json",
+      "run_id": "b072484832fff380ec0d24703925a3e0fd9933769173a6498e58e114fbbcce5d",
+      "checkpoint_hash": "8831e1511528d9183ed099c7e6d2bd876d9f962ded831d85c36f6a6540033423",
+      "as_of": "2026-11-12T00:00:00+00:00",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 8484,
+        "feedback_matured": 8460,
+        "passed": true,
+        "pending_feedback": 24,
+        "selector_versions": 66
+      },
+      "account": {
+        "account": "adaptive_mix",
+        "end_at": "2026-11-12T00:00:00+00:00",
+        "equity_points": 2121,
+        "event_counts": {
+          "hypothesis_registered": 1,
+          "research_attempt_completed": 1,
+          "research_budget_exhausted": 1,
+          "research_waiting": 13
+        },
+        "max_days_below_initial_capital": 3,
+        "max_ledger_residual": 7.8580342233181e-10,
+        "max_underwater_days": 955,
+        "metrics": {
+          "annualized_return": 0.08225041363766183,
+          "average_cash_weight": 0.9515794436586515,
+          "ending_equity": 158264.37124382897,
+          "max_drawdown": -0.1806571040874947,
+          "rebalances": 228.0,
+          "total_fees": 2574.1009744759735,
+          "total_return": 0.5826437124382897,
+          "turnover": 18.438770947518574,
+          "volatility": 0.12464445639713811
+        },
+        "minimum_cash": 49095.457705429166,
+        "pending_orders": 1,
+        "role": "portfolio",
+        "selection_switches": 35,
+        "start_at": "2021-01-22T00:00:00+00:00"
+      },
+      "confirmation": {
+        "accounts": [
+          {
+            "account": "momentum",
+            "ending_equity": 2703848.7752364296,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 2703848.7752364296
+          },
+          {
+            "account": "relative_reversion",
+            "ending_equity": 34916.73451869968,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0006820326027507928,
+            "starting_equity": 34892.936398470214
+          },
+          {
+            "account": "equal_weight",
+            "ending_equity": 1172769.025684422,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.001062879227996083,
+            "starting_equity": 1171523.8373326191
+          },
+          {
+            "account": "cash",
+            "ending_equity": 100000.0,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 100000.0
+          },
+          {
+            "account": "fixed_mix",
+            "ending_equity": 636939.7886893508,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 636939.7886893508
+          },
+          {
+            "account": "dynamic_mix",
+            "ending_equity": 158264.37124382897,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 158264.37124382897
+          },
+          {
+            "account": "adaptive_mix",
+            "ending_equity": 158264.37124382897,
+            "equity_points": 1,
+            "first_at": "2026-11-12T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 158264.37124382897
+          }
+        ],
+        "appended_rows_processed": 1,
+        "eligible_post_freeze_rows": 1,
+        "first_eligible_at": "2026-11-12T00:00:00+00:00",
+        "frozen_at": "2026-11-11T12:36:35.738879+00:00",
+        "independent_profitability_confirmed": false,
+        "limitation": "CSV availability is a protocol assumption; publication, collection and revision vintages are unknown. Historical rows do not become independent confirmation by resuming.",
+        "status": "post_freeze_rows_available_under_protocol"
+      }
+    },
+    {
+      "report": "runs/phase-f-20261110T063328612933Z/reports/report-8871ce5a23f91504.json",
+      "run_id": "46b144d3e295bfc73696bfad52cbb1a7645c47ece6da27419c7c41ee97020dfa",
+      "checkpoint_hash": "8871ce5a23f91504dee1e7dd10e566c98d04d83614ec474e7b4aeedb3bfb1217",
+      "as_of": "2026-11-12T00:00:00+00:00",
+      "audit": {
+        "examples": [],
+        "failure_count": 0,
+        "feedback_created": 8544,
+        "feedback_matured": 8520,
+        "passed": true,
+        "pending_feedback": 24,
+        "selector_versions": 67
+      },
+      "account": {
+        "account": "adaptive_mix",
+        "end_at": "2026-11-12T00:00:00+00:00",
+        "equity_points": 2136,
+        "event_counts": {
+          "hypothesis_registered": 2,
+          "research_attempt_completed": 2,
+          "research_budget_exhausted": 1,
+          "research_waiting": 14
+        },
+        "max_days_below_initial_capital": 1879,
+        "max_ledger_residual": 4.802132025361061e-10,
+        "max_underwater_days": 1890,
+        "metrics": {
+          "annualized_return": -0.04241631886170705,
+          "average_cash_weight": 0.9309925093632958,
+          "ending_equity": 77606.26818758118,
+          "max_drawdown": -0.4968289945716773,
+          "rebalances": 201.0,
+          "total_fees": 5750.570554444588,
+          "total_return": -0.22393731812418816,
+          "turnover": 77.4736072521538,
+          "volatility": 0.17184979847994106
+        },
+        "minimum_cash": 0.0,
+        "pending_orders": 1,
+        "role": "portfolio",
+        "selection_switches": 83,
+        "start_at": "2021-01-07T00:00:00+00:00"
+      },
+      "confirmation": {
+        "accounts": [
+          {
+            "account": "momentum",
+            "ending_equity": 1101964.8170527657,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 1101964.8170527657
+          },
+          {
+            "account": "relative_reversion",
+            "ending_equity": 45432.3939785662,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": -0.031126570398540387,
+            "starting_equity": 46891.98051107104
+          },
+          {
+            "account": "equal_weight",
+            "ending_equity": 1302780.0141628573,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": -0.028950349290850275,
+            "starting_equity": 1341620.3931605841
+          },
+          {
+            "account": "cash",
+            "ending_equity": 100000.0,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 100000.0
+          },
+          {
+            "account": "fixed_mix",
+            "ending_equity": 481647.53477619693,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": -0.015562825145717496,
+            "starting_equity": 489261.8311041443
+          },
+          {
+            "account": "dynamic_mix",
+            "ending_equity": 77606.26818758118,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 77606.26818758118
+          },
+          {
+            "account": "adaptive_mix",
+            "ending_equity": 77606.26818758118,
+            "equity_points": 2,
+            "first_at": "2026-11-11T00:00:00+00:00",
+            "last_at": "2026-11-12T00:00:00+00:00",
+            "net_return": 0.0,
+            "starting_equity": 77606.26818758118
+          }
+        ],
+        "appended_rows_processed": 1776,
+        "eligible_post_freeze_rows": 2,
+        "first_eligible_at": "2026-11-11T00:00:00+00:00",
+        "frozen_at": "2026-11-10T06:33:28.627093+00:00",
+        "independent_profitability_confirmed": false,
+        "limitation": "CSV availability is a protocol assumption; publication, collection and revision vintages are unknown. Historical rows do not become independent confirmation by resuming.",
+        "status": "post_freeze_rows_available_under_protocol"
+      }
+    }
+  ]
+}

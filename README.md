@@ -2,7 +2,7 @@
 
 项目核心目标是检验依据当时信息挑选策略组合、持续积累扣除成本后收益的能力。后续开发以 [历史时钟驱动的策略组合研究与模拟实盘](docs/strategy-selection-replay.md) 为主线：受限历史数据 → 研究与内部验证 → 冻结版本 → 向前模拟 → 成熟结果复盘 → 调整组合或补充策略库。
 
-当前已实现历史隔离、连续组合、成熟反馈选择器、有限候选研究，以及冻结协议、状态检查点、追加数据恢复和审计报告。阶段 A 到 E 首版及 F 工程首版已交付；99 项测试和 BTC/SOL 分段恢复核验通过，范围见 [实现记录](docs/research-system-implementation.md)。实际仍亏损，冻结后的新增数据和独立盈利确认尚待积累。总体背景见 [研究系统设计](docs/research-system-design.md)。
+当前已实现历史隔离、连续组合、成熟反馈选择器、有限候选研究，以及冻结协议、状态检查点、追加数据恢复和审计报告。阶段 A 到 E 首版及 F 工程首版已交付；截至 2026-11-12，103 项测试通过，三条冻结运行已续跑至当日 UTC 零点，v2 累积 1 个冻结后新增权益点。13 个统一起点／预算及成本情景审计通过，动态选择器仍缺少收益优势证据；详见 [最新验证](docs/validation-20261112.md) 和 [实现记录](docs/research-system-implementation.md)。独立盈利确认尚未完成。总体背景见 [研究系统设计](docs/research-system-design.md)。
 
 ## 跨交易所现货价差监控
 
@@ -100,6 +100,37 @@ python research.py --research --config research_loop_config.json --start 2022-01
 `research_events` 追加假设、尝试结果、预算耗尽、候选冻结／影子／确认／生效／退出及其证据。`research.internal_validation_rejected` 显示内部验证淘汰数，`effective_replacements` 只列当前生效替换，未确认候选不可出现在实际目标中。影子确认使用的标签仍是研究代理，实际成绩来自 `adaptive_mix` 的连续资金账。
 
 阶段 E 当轮 82 项测试通过，完整替换、退出及资金连续路径由合成算例验证。BTC/SOL 全区间的两个候选均未通过内部验证，没有进入影子确认；组合保持原选择器，净收益仍为 **-22.39%**。失败记录与预算耗尽状态已保存，尚无研究改进带来收益增量的证据。
+
+## 当前优化实验（2026-11-11）
+
+上一版动态选择器在历史回放中长期退回现金，实际组合净收益为 -22.39%。根据分段对照，新增 [paper_v2_config.json](paper_v2_config.json)：采用 20 日动量、50% 动量预算和 50% 现金；选择器只把动量和等权作为候选，单次选中策略的预算上限为 50%。优化依据和分段结果见 [优化记录](docs/optimization-20261111.md)。
+
+启动新的研究纸面运行：
+
+```powershell
+New-Item -ItemType Directory -Force runs/paper-v2
+python replay.py start --config paper_v2_config.json --mode research --until 2026-11-11T00:00:00Z --checkpoint runs/paper-v2/checkpoint-20261111.json --database runs/paper-v2/frozen.sqlite3 --report-dir runs/paper-v2/reports
+```
+
+固定预算组合可作为主控制账户运行：
+
+```powershell
+python replay.py start --config paper_v2_config.json --mode portfolio --until 2026-11-11T00:00:00Z --checkpoint runs/paper-v2/portfolio-checkpoint-20261111.json --database runs/paper-v2/portfolio.sqlite3 --report-dir runs/paper-v2/portfolio-reports
+```
+
+后续每日更新数据后，从相应检查点使用 `replay.py resume`，每次写入新的检查点文件。
+
+## 继续验证（2026-11-12）
+
+已更新至 2026-11-11 完整日线，并核实此前价格不变。最新固定组合检查点为 `runs/paper-v2/portfolio-checkpoint-20261112.json`，研究组合为 `runs/paper-v2/checkpoint-20261112.json`。原始 v2 历史权益分别为 636,939.79、158,264.37，首个冻结后新增日收益均为 0；这两个余额包含历史回放，并非今天新建的 100,000 账户。30 日候选已失败且尝试预算耗尽，不会自动进入 90 日确认。后台每日调度尚未配置。
+
+新增统一起点和 50% 策略预算的验证工具，比较 5 日动量、20 日动量、等权、动态研究及现金，并检查 10／25／50 bps 成本：
+
+```powershell
+python validate_paper.py --end 2026-11-12T00:00:00Z --output runs/validation-new
+```
+
+输出目录必须为空或不存在。完整报告留在本机，Git 中保留 [验证记录](docs/validation-20261112.md) 与 [指标和协议摘要](docs/validation-20261112.json)。同起点下动态组合仍亏损；20 日动量在 25 bps 下最近一段也转为亏损。相同预算尚不等于实际波动匹配，所有历史比较均为事后诊断，当前保持冻结配置继续积累新数据。
 
 ## 冻结协议、保存与恢复
 
