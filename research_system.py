@@ -21,7 +21,7 @@ from strategy_selector import FeedbackView
 from strategy_research import CandidateResearch, CandidateSpec, RESEARCH_RULE, ResearchConfig
 
 
-VERSION = "research-system-0.7.0"
+VERSION = "research-system-0.7.1"
 MIX_RULE = "fixed-strategy-budgets-v1"
 DEFAULT_STRATEGY_BUDGETS = MappingProxyType({"momentum": 0.5, "relative_reversion": 0.5})
 
@@ -234,7 +234,22 @@ def _rebalance(current_values: dict[str, float], cash: float, targets: dict[str,
             break
         buys = next_buys
     else:
-        raise ArithmeticError("post-cost trade directions did not converge")
+        # At an already matched target, one-ULP rounding can alternate the
+        # inferred buy/sell direction forever. Solve the same monotone budget
+        # equation in normalized units instead of changing the cost model.
+        lower, upper = 0.0, 1.0
+        normalized = {asset: value / value_before for asset, value in current_values.items()}
+        for _ in range(80):
+            middle = (lower + upper) / 2
+            if middle == lower or middle == upper:
+                break
+            required = middle + cost_rate * math.fsum(
+                abs(weights[asset] * middle - normalized[asset]) for asset in current_values)
+            if required > 1.0:
+                upper = middle
+            else:
+                lower = middle
+        equity = value_before * ((lower + upper) / 2)
     target_values = {asset: weight * equity for asset, weight in weights.items()}
     trade_values = {asset: target_values[asset] - value for asset, value in current_values.items()}
     fee = cost_rate * math.fsum(abs(value) for value in trade_values.values())

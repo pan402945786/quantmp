@@ -82,6 +82,18 @@ class ResearchSystemTests(unittest.TestCase):
                 self.assertEqual(trades, {"AAA": 0.0})
                 self.assertEqual((cash, fee), (0, 0))
 
+    def test_near_matched_target_does_not_cycle_buy_and_sell_directions(self):
+        # Observed in the daily BTC/SOL replay at 25 bps: the same target
+        # alternated buy/sell due to one-ULP rounding in the analytic solver.
+        before_values = {"BTCUSDT": 0.0, "SOLUSDT": 48694.49334490602}
+        before_cash = 113620.48447144737
+        values, trades, cash, fee = _rebalance(before_values, before_cash, {"SOLUSDT": 0.3}, 0.0025)
+        equity = math.fsum(values.values()) + cash
+        self.assertGreaterEqual(cash, 0)
+        self.assertTrue(math.isclose(equity + fee, before_cash + math.fsum(before_values.values()), rel_tol=1e-14))
+        self.assertAlmostEqual(values["SOLUSDT"] / equity, 0.3)
+        self.assertEqual(fee, math.fsum(abs(v) for v in trades.values()) * 0.0025)
+
     def test_fees_can_turn_an_unchanged_pre_cost_target_into_a_sale(self):
         values, trades, cash, fee = _rebalance({"AAA": 60.0, "BBB": 20.0}, 20, {"AAA": 0.6, "BBB": 0.3}, 0.01)
         expected_equity = 99.6 / 0.997
